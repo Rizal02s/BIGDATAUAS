@@ -1,0 +1,33 @@
+﻿Layanan,Harga Customer (Rp),Ongkos Kerja (Rp),Kategori
+One Day Service,50000,20000,Sepatu
+Deep Clean,30000,10000,Sepatu
+Leather / Boots,35000,15000,Sepatu
+Kid Shoes (Small ),20000,7500,Sepatu
+Kid Shoes (Medium Large),25000,10000,Sepatu
+Sepatu Trail,50000,20000,Sepatu
+Unyellowing,20000,10000,Sepatu
+Repaint Midsole,50000,20000,Sepatu
+Recolour Midsole,90000,30000,Sepatu
+Repaint Upper Canvas (Low),90000,30000,Sepatu
+Repaint Upper Canvas (High),100000,40000,Sepatu
+Recolour Upper Canvas (Low),110000,45000,Sepatu
+Recolour Upper Canvas (High),120000,50000,Sepatu
+Repaint Upper Leather (Low),100000,40000,Sepatu
+Repaint Upper Leather (High),110000,45000,Sepatu
+Recolour Upper Leather (Low),110000,45000,Sepatu
+Recolour Upper Leather (High),120000,50000,Sepatu
+Tas / Bag (Small),30000,10000,Tas
+Tas / Bag (Medium),40000,15000,Tas
+Tas / Bag (Large),50000,20000,Tas
+Sandal / Topi / Cap,25000,10000,Lainnya
+Dompet / Wallet,30000,10000,Lainnya
+Baby Stroller,100000,50000,Lainnya
+Baby Car Seat,80000,30000,Lainnya
+Helm Standard,30000,10000,Helm
+Helm Standard + Compound,35000,15000,Helm
+Helm Full Face,35000,15000,Helm
+Helm Full Face + Compound,40000,15000,Helm
+Helm One Day Service,50000,20000,Helm
+Repair (Lem),30000,25000,Repair
+Repair (Jahit),35000,30000,Repair
+Repair (Lem+Jahit),40000,35000,Repair

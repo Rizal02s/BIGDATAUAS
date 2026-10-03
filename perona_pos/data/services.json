@@ -1,0 +1,258 @@
+[
+  {
+    "id": "963e12f3-a216-575a-adb3-ba554acc8a08",
+    "name": "One Day Service",
+    "price": 50000,
+    "labor_fee": 20000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "90ae6d4b-da1b-52ab-90ff-000432a86b7b",
+    "name": "Deep Clean",
+    "price": 30000,
+    "labor_fee": 10000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "4e1d35dc-928a-53dd-8ed7-163ec6093e1f",
+    "name": "Leather / Boots",
+    "price": 35000,
+    "labor_fee": 15000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "5a6db529-89bb-5969-b6da-7562c799df3e",
+    "name": "Kid Shoes (Small Medium)",
+    "price": 20000,
+    "labor_fee": 7500,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "6004f5a2-bb7d-51dc-af47-564c86c550bc",
+    "name": "Kid Shoes (Medium Large)",
+    "price": 25000,
+    "labor_fee": 10000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "870709e2-f745-5410-b5af-15e053f35149",
+    "name": "Sepatu Trail",
+    "price": 50000,
+    "labor_fee": 20000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "a2af0bd1-284f-5422-a357-8aa955d2cb95",
+    "name": "Unyellowing",
+    "price": 20000,
+    "labor_fee": 10000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "0b445ae6-a422-52e1-90aa-c3e2d77b8679",
+    "name": "Repaint Midsole",
+    "price": 50000,
+    "labor_fee": 20000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "63d0f803-ce31-5f39-9204-34694c2860c0",
+    "name": "Recolour Midsole",
+    "price": 60000,
+    "labor_fee": 30000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "7885e80c-28a2-536b-9691-8d6cc98373a4",
+    "name": "Repaint Upper Canvas (Low)",
+    "price": 90000,
+    "labor_fee": 30000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "6d1e1236-b2ae-5802-b7ea-a60662f8830f",
+    "name": "Repaint Upper Canvas (High)",
+    "price": 100000,
+    "labor_fee": 40000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "1b89ff63-00c4-530e-9e9f-33db07464585",
+    "name": "Recolour Upper Canvas (Low)",
+    "price": 110000,
+    "labor_fee": 30000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "31e5d5b0-9846-5c78-a09f-4ad94dc643c4",
+    "name": "Recolour Upper Canvas (High)",
+    "price": 120000,
+    "labor_fee": 40000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "b4aca6dc-7a34-5862-a6c9-547bc6d42ed3",
+    "name": "Repaint Upper Leather (Low)",
+    "price": 100000,
+    "labor_fee": 40000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "3611d474-3edb-58ce-9c29-7e410817b5ed",
+    "name": "Repaint Upper Leather (High)",
+    "price": 110000,
+    "labor_fee": 40000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "8c77073d-faba-530a-85e4-61f8ab9d2197",
+    "name": "Recolour Upper Leather (Low)",
+    "price": 110000,
+    "labor_fee": 30000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "de6ebb07-4cd8-5c4c-90e6-45ab9602293a",
+    "name": "Recolour Upper Leather (High)",
+    "price": 120000,
+    "labor_fee": 40000,
+    "category": "Sepatu",
+    "active": true
+  },
+  {
+    "id": "35eb2cbb-c141-5991-b5cd-7fd4f664c553",
+    "name": "Tas / Bag (Small)",
+    "price": 30000,
+    "labor_fee": 10000,
+    "category": "Tas",
+    "active": true
+  },
+  {
+    "id": "25377be8-df56-5971-8a22-44c5c7b3aa1c",
+    "name": "Tas / Bag (Medium)",
+    "price": 40000,
+    "labor_fee": 15000,
+    "category": "Tas",
+    "active": true
+  },
+  {
+    "id": "cccbbced-d5c3-5632-b0a6-7ecc34c4088a",
+    "name": "Tas / Bag (Large)",
+    "price": 50000,
+    "labor_fee": 20000,
+    "category": "Tas",
+    "active": true
+  },
+  {
+    "id": "3c3532e2-094b-5d6d-a649-a12071f23364",
+    "name": "Sandal / Topi / Cap",
+    "price": 25000,
+    "labor_fee": 10000,
+    "category": "Lainnya",
+    "active": true
+  },
+  {
+    "id": "d897eecc-9035-5aae-8a2b-122021eb2dc3",
+    "name": "Dompet / Wallet",
+    "price": 30000,
+    "labor_fee": 10000,
+    "category": "Lainnya",
+    "active": true
+  },
+  {
+    "id": "2f935f8e-8d31-5c6d-9b8b-a43dae00fb44",
+    "name": "Baby Stroller",
+    "price": 100000,
+    "labor_fee": 50000,
+    "category": "Lainnya",
+    "active": true
+  },
+  {
+    "id": "7b9501ab-0951-58c9-a6b7-dd099ee6ca42",
+    "name": "Baby Car Seat",
+    "price": 80000,
+    "labor_fee": 30000,
+    "category": "Lainnya",
+    "active": true
+  },
+  {
+    "id": "ba452e7f-b381-515f-8463-9d2e9536e99c",
+    "name": "Helm Standard",
+    "price": 30000,
+    "labor_fee": 10000,
+    "category": "Helm",
+    "active": true
+  },
+  {
+    "id": "73dbde38-c7e3-5faa-99c9-aa3762f31056",
+    "name": "Helm Standard + Compound",
+    "price": 35000,
+    "labor_fee": 15000,
+    "category": "Helm",
+    "active": true
+  },
+  {
+    "id": "b641a5d1-70fb-53f7-ab0e-b5045574e5ce",
+    "name": "Helm Full Face",
+    "price": 35000,
+    "labor_fee": 15000,
+    "category": "Helm",
+    "active": true
+  },
+  {
+    "id": "e74aa571-841d-57e8-ad3e-84e64b910cac",
+    "name": "Helm Full Face + Compound",
+    "price": 40000,
+    "labor_fee": 15000,
+    "category": "Helm",
+    "active": true
+  },
+  {
+    "id": "fd0c663c-c471-5d95-9fcf-ac0a73fe0964",
+    "name": "Helm One Day Service",
+    "price": 50000,
+    "labor_fee": 20000,
+    "category": "Helm",
+    "active": true
+  },
+  {
+    "id": "1c8e0d19-73fc-5a58-a131-3dc061cbb9ab",
+    "name": "Repair (Lem)",
+    "price": 30000,
+    "labor_fee": 25000,
+    "category": "Repair",
+    "active": true
+  },
+  {
+    "id": "63a58d36-ea5a-5530-9356-a3ce27b34b22",
+    "name": "Repair (Jahit)",
+    "price": 35000,
+    "labor_fee": 30000,
+    "category": "Repair",
+    "active": true
+  },
+  {
+    "id": "df31e00a-4330-528a-aab1-1d82c628a6ae",
+    "name": "Repair (Lem+Jahit)",
+    "price": 40000,
+    "labor_fee": 35000,
+    "category": "Repair",
+    "active": true
+  }
+]

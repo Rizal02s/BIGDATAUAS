@@ -1,0 +1,8 @@
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+config.json
+android/key.properties
+*.jks
+*.keystore
+scripts/node_modules/

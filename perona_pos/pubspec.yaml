@@ -1,0 +1,22 @@
+name: perona_pos
+description: Kasir dan rekap ongkos kerja Perona Sepatu.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.7.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.8.4
+  image_picker: ^1.1.2
+  intl: ^0.20.2
+  uuid: ^4.5.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  http: ^1.6.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/perona-logo.png

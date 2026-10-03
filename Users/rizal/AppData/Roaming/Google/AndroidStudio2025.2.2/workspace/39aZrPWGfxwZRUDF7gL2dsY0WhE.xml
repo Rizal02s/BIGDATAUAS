@@ -1,0 +1,272 @@
+<project version="4">
+  <component name="BookmarksManager">
+    <option name="groups">
+      <GroupState>
+        <option name="name" value="dart_dasar" />
+      </GroupState>
+    </option>
+  </component>
+  <component name="FileEditorManager">
+    <leaf ideFingerprint="zo3cb0rhl23g">
+      <file>
+        <entry file="file://$PROJECT_DIR$/project1/bin/project1.dart" file-id="48021" managing-fs="1767157166276">
+          <provider editor-type-id="text-editor" selected="true">
+            <state relative-caret-position="44">
+              <caret line="2" column="32" selection-start-line="2" selection-start-column="32" selection-end-line="2" selection-end-column="32" />
+            </state>
+          </provider>
+        </entry>
+        <tab><![CDATA[{"tabTitle":"project1.dart","foregroundColor":-1536119,"textAttributes":{"name":"a","children":[{"name":"option","attributes":{"name":"FOREGROUND","value":"e88f89"}}]},"icon":[10,57,99,111,109,46,105,110,116,101,108,108,105,106,46,117,105,46,105,99,111,110,115,46,82,97,115,116,101,114,105,122,101,100,73,109,97,103,101,68,97,116,97,76,111,97,100,101,114,68,101,115,99,114,105,112,116,111,114,18,57,10,19,105,99,111,110,115,47,100,97,114,116,95,102,105,108,101,46,115,118,103,18,20,105,99,111,110,115,47,101,120,112,117,105,47,100,97,114,116,46,115,118,103,26,4,68,97,114,116,40,-114,-74,-27,-124,3,48,2]}]]></tab>
+      </file>
+      <file current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/project1/bin/heloo_world" file-id="77108" managing-fs="1767157166276">
+          <provider editor-type-id="text-editor" selected="true" />
+        </entry>
+        <tab><![CDATA[{"tabTitle":"heloo_world","foregroundColor":-2104859,"textAttributes":{"name":"a"},"icon":[10,57,99,111,109,46,105,110,116,101,108,108,105,106,46,117,105,46,105,99,111,110,115,46,82,97,115,116,101,114,105,122,101,100,73,109,97,103,101,68,97,116,97,76,111,97,100,101,114,68,101,115,99,114,105,112,116,111,114,18,73,10,18,102,105,108,101,84,121,112,101,115,47,116,101,120,116,46,115,118,103,18,24,101,120,112,117,105,47,102,105,108,101,84,121,112,101,115,47,116,101,120,116,46,115,118,103,26,12,99,111,109,46,105,110,116,101,108,108,105,106,40,-122,-48,-19,-85,-2,-1,-1,-1,-1,1,48,0]}]]></tab>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTypeUsageLocalSummary"><![CDATA[{
+  "data": {
+    "AUTO_DETECTED": {
+      "usageCount": 1,
+      "lastUsed": 1770937648756
+    },
+    "Dart": {
+      "usageCount": 1,
+      "lastUsed": 1770936433713
+    }
+  }
+}]]></component>
+  <component name="IdeDocumentHistory"><![CDATA[{}]]></component>
+  <component name="IgnoredFileRootStore">
+    <option name="generatedRoots">
+      <set>
+        <option value="$PROJECT_DIR$/.idea" />
+      </set>
+    </option>
+  </component>
+  <component name="LanguageUsageStatistics">
+    <language id="Dart">
+      <summary usageCount="1" lastUsage="1770936433714" />
+    </language>
+  </component>
+  <component name="ProjectView">
+    <navigator currentView="ProjectPane" proportions="" version="1" />
+    <panes>
+      <pane id="PackagesPane" />
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="dart_dasar" type="b2602c69:ProjectViewProjectNode" />
+              <item name="dir{file://C:/belajar/dart_dasar}" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="dart_dasar" type="b2602c69:ProjectViewProjectNode" />
+              <item name="dir{file://C:/belajar/dart_dasar}" type="462c0819:PsiDirectoryNode" />
+              <item name="dir{file://C:/belajar/dart_dasar/project1}" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="dart_dasar" type="b2602c69:ProjectViewProjectNode" />
+              <item name="dir{file://C:/belajar/dart_dasar}" type="462c0819:PsiDirectoryNode" />
+              <item name="dir{file://C:/belajar/dart_dasar/project1}" type="462c0819:PsiDirectoryNode" />
+              <item name="dir{file://C:/belajar/dart_dasar/project1/bin}" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+          <presentation>
+            <attributes />
+            <data iconPath="expui/toolwindows/project.svg" iconPlugin="com.intellij" isLeaf="false" text="dart_dasar" />
+            <item name="dart_dasar" type="b2602c69:ProjectViewProjectNode" />
+            <presentation>
+              <attributes>
+                <map>
+                  <entry key="filePath" value="$PROJECT_DIR$" />
+                </map>
+              </attributes>
+              <data iconPath="expui/nodes/module.svg" iconPlugin="com.intellij" isLeaf="false" text="dart_dasar" />
+              <item name="dir{file://C:/belajar/dart_dasar}" type="462c0819:PsiDirectoryNode" />
+              <presentation>
+                <attributes>
+                  <map>
+                    <entry key="filePath" value="$PROJECT_DIR$/.idea" />
+                  </map>
+                </attributes>
+                <data iconPath="expui/nodes/folder.svg" iconPlugin="com.intellij" isLeaf="false" text=".idea" />
+                <item name="dir{file://C:/belajar/dart_dasar/.idea}" type="462c0819:PsiDirectoryNode" />
+              </presentation>
+              <presentation>
+                <attributes>
+                  <map>
+                    <entry key="filePath" value="$PROJECT_DIR$/project1" />
+                  </map>
+                </attributes>
+                <data iconPath="expui/nodes/folder.svg" iconPlugin="com.intellij" isLeaf="false" text="project1" />
+                <item name="dir{file://C:/belajar/dart_dasar/project1}" type="462c0819:PsiDirectoryNode" />
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/.dart_tool" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/nodes/excludeRoot.svg" iconPlugin="com.intellij" isLeaf="false" text=".dart_tool" />
+                  <item name="dir{file://C:/belajar/dart_dasar/project1/.dart_tool}" type="462c0819:PsiDirectoryNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/bin" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/nodes/folder.svg" iconPlugin="com.intellij" isLeaf="false" text="bin" />
+                  <item name="dir{file://C:/belajar/dart_dasar/project1/bin}" type="462c0819:PsiDirectoryNode" />
+                  <presentation>
+                    <attributes>
+                      <map>
+                        <entry key="filePath" value="$PROJECT_DIR$/project1/bin/heloo_world" />
+                      </map>
+                    </attributes>
+                    <data iconPath="expui/fileTypes/text.svg" iconPlugin="com.intellij" isLeaf="true" text="heloo_world" />
+                    <item name="heloo_world" type="ab9368bb:PsiFileNode" />
+                  </presentation>
+                  <presentation>
+                    <attributes>
+                      <map>
+                        <entry key="filePath" value="$PROJECT_DIR$/project1/bin/project1.dart" />
+                      </map>
+                    </attributes>
+                    <data iconPath="icons/expui/dart.svg" iconPlugin="Dart" isLeaf="true" text="project1.dart" />
+                    <item name="project1.dart" type="ab9368bb:PsiFileNode" />
+                  </presentation>
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/lib" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/nodes/folder.svg" iconPlugin="com.intellij" isLeaf="false" text="lib" />
+                  <item name="dir{file://C:/belajar/dart_dasar/project1/lib}" type="462c0819:PsiDirectoryNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/test" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/nodes/testSourceFolder.svg" iconPlugin="com.intellij" isLeaf="false" text="test" />
+                  <item name="dir{file://C:/belajar/dart_dasar/project1/test}" type="462c0819:PsiDirectoryNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/.gitignore" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/fileTypes/ignored.svg" iconPlugin="com.intellij" isLeaf="true" text=".gitignore" />
+                  <item name=".gitignore" type="ab9368bb:PsiFileNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/analysis_options.yaml" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/fileTypes/yaml.svg" iconPlugin="com.intellij" isLeaf="true" text="analysis_options.yaml" />
+                  <item name="analysis_options.yaml" type="ab9368bb:PsiFileNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/CHANGELOG.md" />
+                    </map>
+                  </attributes>
+                  <data iconPath="icons/expui/markdown.svg" iconPlugin="org.intellij.plugins.markdown" isLeaf="true" text="CHANGELOG.md" />
+                  <item name="CHANGELOG.md" type="ab9368bb:PsiFileNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/pubspec.lock" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/fileTypes/yaml.svg" iconPlugin="com.intellij" isLeaf="true" text="pubspec.lock" />
+                  <item name="pubspec.lock" type="ab9368bb:PsiFileNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/pubspec.yaml" />
+                    </map>
+                  </attributes>
+                  <data iconPath="expui/fileTypes/yaml.svg" iconPlugin="com.intellij" isLeaf="true" text="pubspec.yaml" />
+                  <item name="pubspec.yaml" type="ab9368bb:PsiFileNode" />
+                </presentation>
+                <presentation>
+                  <attributes>
+                    <map>
+                      <entry key="filePath" value="$PROJECT_DIR$/project1/README.md" />
+                    </map>
+                  </attributes>
+                  <data iconPath="icons/expui/markdown.svg" iconPlugin="org.intellij.plugins.markdown" isLeaf="true" text="README.md" />
+                  <item name="README.md" type="ab9368bb:PsiFileNode" />
+                </presentation>
+              </presentation>
+            </presentation>
+            <presentation>
+              <attributes />
+              <data iconPath="expui/nodes/library.svg" iconPlugin="com.intellij" isLeaf="false" text="External Libraries" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+            </presentation>
+            <presentation>
+              <attributes />
+              <data iconPath="expui/fileTypes/scratches.svg" iconPlugin="com.intellij" isLeaf="true" text="Scratches and Consoles" />
+              <item name="Scratches and Consoles" type="b85a3e1f:ScratchTreeStructureProvider$MyProjectNode" />
+            </presentation>
+          </presentation>
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="ReaderModeSettings">
+    <option name="enableVisualFormatting" value="false" />
+  </component>
+  <component name="ToolWindowManager">
+    <layoutV2>
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.25944445" />
+      <window_info id="Commit" order="1" weight="0.25" />
+      <window_info id="Resources Explorer" order="2" weight="0.25" />
+      <window_info anchor="bottom" id="Version Control" order="0" />
+      <window_info anchor="bottom" id="Terminal" order="1" />
+      <window_info anchor="bottom" id="Problems" order="2" />
+      <window_info anchor="bottom" id="Problems View" order="3" />
+      <window_info anchor="bottom" id="Logcat" order="4" />
+      <window_info anchor="bottom" id="App Quality Insights" order="5" />
+      <window_info anchor="bottom" id="Build" order="6" />
+      <window_info anchor="right" content_ui="combo" id="Notifications" order="0" weight="0.25" />
+      <window_info anchor="right" id="Gradle" order="1" weight="0.25" />
+      <window_info anchor="right" id="Device Manager" order="2" weight="0.25" />
+      <window_info anchor="right" id="Device Manager 2" order="3" weight="0.25" />
+      <window_info anchor="right" id="Running Devices" order="4" weight="0.25" />
+      <window_info anchor="right" id="StudioBot" order="5" weight="0.25" />
+      <unified_weights left="0.25944445" />
+    </layoutV2>
+    <recentWindows>
+      <value>Project</value>
+    </recentWindows>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/project1/bin/project1.dart">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="44">
+          <caret line="2" column="32" selection-start-line="2" selection-start-column="32" selection-end-line="2" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/project1/bin/heloo_world">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+  </component>
+</project>
