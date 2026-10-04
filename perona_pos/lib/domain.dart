@@ -37,7 +37,11 @@ class Totals {
   int get revenue => gross - discount;
   // Ini kontribusi setelah upah, belum dikurangi bahan, sewa, dll.
   int get contribution => revenue - labor;
-  factory Totals.fromItems(List<Json> items, int discount) {
+  factory Totals.fromItems(
+    List<Json> items,
+    int discount, {
+    bool includeLabor = true,
+  }) {
     var gross = 0;
     var labor = 0;
     for (final item in items) {
@@ -45,11 +49,11 @@ class Totals {
       if (quantity < 1 || quantity > 999) {
         throw ArgumentError('Jumlah harus 1–999.');
       }
-      if (item['labor_fee'] == null) {
+      if (includeLabor && item['labor_fee'] == null) {
         throw ArgumentError('Tarif ongkos belum ditetapkan.');
       }
       final price = money(item['price']);
-      final fee = money(item['labor_fee']);
+      final fee = includeLabor ? money(item['labor_fee']) : 0;
       if (price < 0 || fee < 0) {
         throw ArgumentError('Tarif tidak boleh negatif.');
       }

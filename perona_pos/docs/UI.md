@@ -1,5 +1,16 @@
 # Tampilan owner dan pegawai
 
+**Versi terbaru 0.1.3+4:** Form order tidak menampilkan ongkos untuk semua peran.
+Ada pilihan menyimpan saja atau membuat nota PDF pelanggan. Halaman Ongkos
+memiliki rincian pekerjaan pegawai yang dapat dibuka dan diunduh, sedangkan
+halaman Order menyediakan unduhan rekap periode lengkap.
+Cara penggunaan dan batas perhitungan ada di [PDF.md](PDF.md).
+
+**Versi 0.1.2+3:** Ongkos memiliki halaman tersendiri.
+Ada peran Owner, Admin, dan Teknisi; admin tidak mendapat menu/data ongkos.
+Hak akses dan langkah SQL untuk mengaktifkannya dijelaskan di
+[AKSES.md](AKSES.md). Bagian 3 Oktober di bawah adalah riwayat tampilan sebelumnya.
+
 Perubahan 3 Oktober 2026. Peran berasal dari `profiles.role` setelah login;
 pengguna tidak memilih peran sendiri pada halaman masuk.
 
@@ -84,3 +95,32 @@ QRIS, kamera, dan unggah Storage sebenarnya di perangkat nyata belum dilakukan.
 
 ![Form order](ui/order-form.png)
 ![Pembayaran dan foto pada form](ui/order-payment-photo.png)
+
+## Daftar tanggal order — 4 Oktober 2026
+
+Pada tab Order dengan periode Bulanan, kartu pelanggan diganti dengan daftar
+seluruh tanggal dalam bulan terpilih (termasuk tanggal dengan 0 order).
+Setiap baris menampilkan tanggal, hari, dan jumlah order. Ketuk tanggal untuk
+membuka order hari tersebut, lalu ketuk pelanggan untuk melihat detail yang
+sudah ada. Tombol kembali mengembalikan pengguna ke daftar tanggal dan memuat
+ulang jumlahnya. Periode Harian dan Tahunan tetap menampilkan daftar pelanggan.
+
+Pengelompokan memakai tanggal order masuk dalam WIB, bukan waktu pembayaran.
+Jumlah bulanan mengambil seluruh halaman timestamp order aktif; tidak dibatasi
+30 order pertama. Daftar satu hari tetap memiliki paginasi 30 order. Filter
+Pekerjaan saya/Semua order berlaku pada jumlah per tanggal dan daftar hari itu.
+Tidak ada migrasi SQL atau perubahan data transaksi.
+
+Versi aplikasi dinaikkan menjadi `0.1.1+2`. Seluruh 39 tes lulus dan
+`flutter analyze lib test` tanpa temuan. Tes tambahan mencakup pembacaan lintas
+halaman, batas tanggal WIB, navigasi tanggal/detail, filter pegawai, tanggal
+kosong, retry kegagalan pemuatan, paginasi harian, dan teks besar pada layar kecil.
+
+APK release berhasil dibuat dan dipasang di emulator Pixel 6. Pemeriksaan
+online dengan akun owner yang sudah login menampilkan 2 order pada 3 Oktober,
+lalu membuka kedua pelanggan pada halaman hari tersebut. Tidak membuat atau
+mengubah transaksi untuk pemeriksaan ini. Signing masih memakai kunci debug
+yang sudah ada pada proyek, sehingga APK ini tetap untuk pengujian.
+
+![Daftar tanggal bulanan](ui/order-dates.png)
+![Order pada tanggal yang dipilih](ui/orders-on-date.png)

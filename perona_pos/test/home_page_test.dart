@@ -17,9 +17,12 @@ class _TestSupabaseClient extends Fake implements SupabaseClient {
 }
 
 class DemoRepository extends Repository {
-  DemoRepository() : super(_TestSupabaseClient());
+  DemoRepository() : super(_TestSupabaseClient()) {
+    accessRole = 'staff';
+  }
   final workerFilters = <String?>[];
   bool empty = false, fail = false;
+  int reportReads = 0;
 
   @override
   String get userId => 'staff-a';
@@ -45,21 +48,23 @@ class DemoRepository extends Repository {
   ];
 
   @override
-  Future<Json> report(Period period) async =>
-      empty
-          ? {}
-          : {
-            'count': 12,
-            'revenue': 540000,
-            'cash': 420000,
-            'labor': 125000,
-            'discount': 15000,
-            'outstanding_all': 180000,
-            'wages': [
-              {'id': 'staff-a', 'name': 'Dina', 'amount': 75000},
-              {'id': 'staff-b', 'name': 'Bagas', 'amount': 50000},
-            ],
-          };
+  Future<Json> report(Period period) async {
+    reportReads++;
+    return empty
+        ? {}
+        : {
+          'count': 12,
+          'revenue': 540000,
+          'cash': 420000,
+          'labor': 125000,
+          'discount': 15000,
+          'outstanding_all': 180000,
+          'wages': [
+            {'id': 'staff-a', 'name': 'Dina', 'amount': 75000},
+            {'id': 'staff-b', 'name': 'Bagas', 'amount': 50000},
+          ],
+        };
+  }
 
   @override
   Future<List<Json>> orders(Period period, int page, {String? workerId}) async {
@@ -243,30 +248,39 @@ void main() {
     await capture(tester, 'owner-team');
   });
 
-  testWidgets('staff home uses own period wages and assigned work', (
+  testWidgets('technician sees finance and separate team and own wage page', (
     tester,
   ) async {
     final repo = DemoRepository();
     addTearDown(() => tester.runAsync(repo.db.dispose));
     await pumpHome(tester, repo, 'staff');
-    expect(find.text('Portal Pegawai'), findsOneWidget);
-    expect(find.text('Ongkos kerja saya'), findsOneWidget);
-    // Server period total includes work outside this page's 20,000 rupiah.
-    expect(find.text('Rp75.000'), findsOneWidget);
-    expect(find.text('Pembayaran masuk'), findsNothing);
+    expect(find.text('Portal Teknisi'), findsOneWidget);
+    expect(find.text('Ongkos kerja saya'), findsNothing);
+    expect(find.text('Pembayaran masuk'), findsOneWidget);
     expect(find.text('Pegawai'), findsNothing);
-    expect(repo.workerFilters.last, 'staff-a');
+    expect(repo.workerFilters.last, isNull);
     await capture(tester, 'staff-home');
-    await tester.drag(find.byType(ListView).first, const Offset(0, -450));
+    await tester.tap(find.text('Ongkos'));
     await tester.pumpAndSettle();
+    expect(find.text('Ongkos pegawai'), findsOneWidget);
+    expect(find.text('Rp75.000'), findsWidgets);
+    expect(find.text('Rp125.000'), findsOneWidget);
+    await capture(tester, 'technician-wages');
+    await tester.tap(find.text('Order'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Andi Pratama'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Andi Pratama'), findsOneWidget);
     expect(find.text('Sinta Dewi'), findsNothing);
-    expect(find.text('Rp20.000'), findsOneWidget);
+    expect(find.text('Rp90.000'), findsOneWidget);
     expect(find.text('Fast Clean × 1'), findsNothing);
     await capture(tester, 'staff-work');
   });
 
-  testWidgets('staff can switch all orders and return to personal home', (
+  testWidgets('technician can switch all orders and return to shared summary', (
     tester,
   ) async {
     final repo = DemoRepository();
@@ -277,10 +291,10 @@ void main() {
     await tester.tap(find.text('Semua order'));
     await tester.pumpAndSettle();
     expect(repo.workerFilters.last, isNull);
-    await tester.tap(find.text('Beranda'));
+    await tester.tap(find.text('Ringkasan'));
     await tester.pumpAndSettle();
-    expect(repo.workerFilters.last, 'staff-a');
-    expect(find.text('Ongkos kerja saya'), findsOneWidget);
+    expect(repo.workerFilters.last, isNull);
+    expect(find.text('Pembayaran masuk'), findsOneWidget);
   });
 
   testWidgets('staff catalog has no price edit or account management actions', (
@@ -302,7 +316,7 @@ void main() {
   ) async {
     final repo = DemoRepository();
     addTearDown(() => tester.runAsync(repo.db.dispose));
-    for (final role in ['owner', 'staff']) {
+    for (final role in ['owner', 'staff', 'technician', 'admin']) {
       await pumpHome(
         tester,
         repo,
@@ -326,9 +340,13 @@ void main() {
     final repo = DemoRepository()..empty = true;
     addTearDown(() => tester.runAsync(repo.db.dispose));
     await pumpHome(tester, repo, 'staff');
-    expect(find.text('Rp0'), findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.tap(find.text('Order'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Belum ada pekerjaan untukmu'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Belum ada pekerjaan untukmu'), findsOneWidget);
     repo.fail = true;
     await tester.tap(find.byTooltip('Muat ulang'));
@@ -337,6 +355,45 @@ void main() {
     repo.fail = false;
     await tester.tap(find.text('Coba lagi'));
     await tester.pumpAndSettle();
-    expect(find.text('Ongkos kerja saya'), findsOneWidget);
+    expect(find.text('Daftar order'), findsOneWidget);
   });
+
+  testWidgets(
+    'owner wage page is separate and account menu offers admin and technician',
+    (tester) async {
+      final repo = DemoRepository();
+      await pumpHome(tester, repo, 'owner');
+      expect(find.text('Ongkos kerja tim'), findsNothing);
+      await tester.tap(find.text('Ongkos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ongkos pegawai'), findsOneWidget);
+      await capture(tester, 'owner-wages');
+      await tester.tap(find.text('Pegawai'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Atur akses').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Aktifkan sebagai admin'), findsOneWidget);
+      expect(find.text('Aktifkan sebagai teknisi'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'admin has only operational pages and never requests wage reports',
+    (tester) async {
+      final repo = DemoRepository();
+      await pumpHome(tester, repo, 'admin');
+      expect(find.text('Portal Admin'), findsOneWidget);
+      expect(find.text('Ongkos'), findsNothing);
+      expect(find.text('Pegawai'), findsNothing);
+      expect(find.text('Layanan'), findsNothing);
+      expect(find.text('Pembayaran masuk'), findsNothing);
+      expect(repo.reportReads, 0);
+      expect(repo.workerFilters.last, isNull);
+      await capture(tester, 'admin-home');
+      await tester.tap(find.text('Order'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pekerjaan saya'), findsNothing);
+      expect(repo.reportReads, 0);
+    },
+  );
 }

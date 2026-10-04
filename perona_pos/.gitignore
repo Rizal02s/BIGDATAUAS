@@ -1,6 +1,7 @@
 .dart_tool/
 .flutter-plugins-dependencies
 build/
+tmp/
 config.json
 android/key.properties
 *.jks

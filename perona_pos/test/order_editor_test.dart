@@ -113,6 +113,8 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Simpan order'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan order'));
     await tester.pumpAndSettle();
     expect(repo.saves, 1);
@@ -134,6 +136,8 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Simpan order'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan order'));
     await tester.pumpAndSettle();
     expect(repo.saves, 1);
@@ -152,6 +156,8 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Simpan order'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan order'));
     await tester.pumpAndSettle();
     expect(repo.saves, 0);

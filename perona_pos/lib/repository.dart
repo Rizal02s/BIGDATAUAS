@@ -6,9 +6,17 @@ import 'domain.dart';
 class Repository {
   final SupabaseClient db;
   Repository(this.db);
+  String accessRole = 'pending';
+  bool get isAdmin => accessRole == 'admin';
+  bool get canViewWages =>
+      ['owner', 'staff', 'technician'].contains(accessRole);
   String get userId => db.auth.currentUser!.id;
-  Future<Json> profile() async =>
-      await db.from('profiles').select().eq('id', userId).single();
+  Future<Json> profile() async {
+    final result = await db.from('profiles').select().eq('id', userId).single();
+    accessRole = result['role'] as String;
+    return result;
+  }
+
   Future<List<Json>> _all(String table, String order) async {
     final result = <Json>[];
     for (var offset = 0; ; offset += 500) {
@@ -23,9 +31,26 @@ class Repository {
     return result;
   }
 
-  Future<List<Json>> services() => _all('services', 'name');
+  Future<List<Json>> services() async =>
+      isAdmin
+          ? (await db.rpc('service_catalog') as List)
+              .map((row) => Json.from(row as Map))
+              .toList()
+          : await _all('services', 'name');
   Future<List<Json>> staff() => _all('profiles', 'name');
   Future<List<Json>> orders(Period period, int page, {String? workerId}) async {
+    if (isAdmin) {
+      final rows = await db.rpc(
+        'order_list',
+        params: {
+          'p_start': period.start.toIso8601String(),
+          'p_end': period.end.toIso8601String(),
+          'p_page': page,
+          'p_worker': workerId,
+        },
+      );
+      return (rows as List).map((row) => Json.from(row as Map)).toList();
+    }
     var query = db
         .from('orders')
         .select('*, payments(*), order_photos(id)')
@@ -44,6 +69,9 @@ class Repository {
   }
 
   Future<Json> report(Period period) async {
+    if (!canViewWages) {
+      throw StateError('Akun ini tidak memiliki akses rekap ongkos.');
+    }
     final result = await db.rpc(
       'period_report',
       params: {
@@ -54,12 +82,80 @@ class Repository {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<Json> order(String id) async =>
-      await db
+  Future<List<Json>> allOrders(Period period, {String? workerId}) async {
+    final byId = <String, Json>{};
+    for (var page = 0; ; page++) {
+      final rows = await orders(period, page, workerId: workerId);
+      var added = 0;
+      for (final row in rows) {
+        final id = row['id'] as String;
+        if (!byId.containsKey(id)) added++;
+        byId[id] = row;
+      }
+      if (rows.length < 30) break;
+      if (added == 0) {
+        throw StateError(
+          'Halaman data berulang. Muat ulang sebelum mengunduh.',
+        );
+      }
+    }
+    return byId.values.toList();
+  }
+
+  Future<Map<int, int>> orderDayCounts(
+    DateTime month, {
+    String? workerId,
+  }) async {
+    final period = Period.forDate(month, 'month');
+    if (isAdmin) {
+      final counts = await db.rpc(
+        'order_day_counts',
+        params: {
+          'p_start': period.start.toIso8601String(),
+          'p_end': period.end.toIso8601String(),
+          'p_worker': workerId,
+        },
+      );
+      return (counts as Map).map(
+        (day, count) => MapEntry(int.parse(day as String), money(count)),
+      );
+    }
+    final counts = <int, int>{};
+    // Read all pages of timestamps; a busy month's counts must not depend on
+    // the 30 orders displayed on an individual day page.
+    for (var offset = 0; ; offset += 500) {
+      var query = db
           .from('orders')
-          .select('*, payments(*), order_photos(*)')
-          .eq('id', id)
-          .single();
+          .select('id, created_at')
+          .isFilter('deleted_at', null)
+          .gte('created_at', period.start.toIso8601String())
+          .lt('created_at', period.end.toIso8601String());
+      if (workerId != null) {
+        query = query.contains('items', [
+          {'worker_id': workerId},
+        ]);
+      }
+      final rows = await query
+          .order('created_at')
+          .order('id')
+          .range(offset, offset + 499);
+      for (final row in rows) {
+        final day = jakarta(DateTime.parse(row['created_at'] as String)).day;
+        counts.update(day, (count) => count + 1, ifAbsent: () => 1);
+      }
+      if (rows.length < 500) break;
+    }
+    return counts;
+  }
+
+  Future<Json> order(String id) async =>
+      isAdmin
+          ? Json.from(await db.rpc('order_detail', params: {'p_id': id}) as Map)
+          : await db
+              .from('orders')
+              .select('*, payments(*), order_photos(*)')
+              .eq('id', id)
+              .single();
   Future<void> saveOrder(Json order) async {
     await db.rpc(
       'save_order',

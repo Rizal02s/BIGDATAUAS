@@ -12,6 +12,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<Json> services = [], staff = [], orders = [];
   Json summary = {};
+  Map<int, int> dayCounts = {};
   DateTime date = jakarta(DateTime.now());
   String kind = 'day', catalogQuery = '';
   final catalogSearch = TextEditingController();
@@ -20,6 +21,9 @@ class _HomePageState extends State<HomePage> {
   String? failure;
 
   bool get owner => widget.profile['role'] == 'owner';
+  bool get admin => widget.profile['role'] == 'admin';
+  bool get technician =>
+      ['staff', 'technician'].contains(widget.profile['role']);
   String get userId => widget.profile['id'] as String;
   String get name => widget.profile['name'] as String? ?? 'Perona';
   Period get period => Period.forDate(date, kind);
@@ -31,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    widget.repo.accessRole = widget.profile['role'] as String;
     load();
   }
 
@@ -42,7 +47,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> load() async {
     final token = ++request;
-    final workerId = !owner && (tab == 0 || mineOnly) ? userId : null;
+    final workerId = technician && tab == 1 && mineOnly ? userId : null;
+    final grouped = tab == 1 && kind == 'month';
     setState(() {
       busy = true;
       failure = null;
@@ -51,8 +57,15 @@ class _HomePageState extends State<HomePage> {
       final result = await Future.wait<dynamic>([
         widget.repo.services(),
         widget.repo.staff(),
-        widget.repo.orders(period, page, workerId: workerId),
-        widget.repo.report(period),
+        grouped
+            ? Future.value(<Json>[])
+            : widget.repo.orders(period, page, workerId: workerId),
+        !admin && (tab == 0 || tab == 3)
+            ? widget.repo.report(period)
+            : Future.value(<String, dynamic>{}),
+        grouped
+            ? widget.repo.orderDayCounts(date, workerId: workerId)
+            : Future.value(<int, int>{}),
       ]);
       if (!mounted || token != request) return;
       setState(() {
@@ -60,6 +73,7 @@ class _HomePageState extends State<HomePage> {
         staff = result[1] as List<Json>;
         orders = result[2] as List<Json>;
         summary = result[3] as Json;
+        dayCounts = result[4] as Map<int, int>;
       });
     } catch (e) {
       if (mounted && token == request) setState(() => failure = errorText(e));
@@ -100,6 +114,73 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     if (mounted) await load();
+  }
+
+  Future<void> openDay(DateTime selected) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => _OrderDayPage(
+              repo: widget.repo,
+              date: selected,
+              owner: owner,
+              workerId: technician && mineOnly ? userId : null,
+              services: services,
+              staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Future<void> workerDetail(Json worker) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => _WorkerDetailPage(
+              repo: widget.repo,
+              period: period,
+              workerId: worker['id'] as String,
+              name: worker['name'] as String,
+              services: services,
+              staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  void exportOrders() {
+    final selectedPeriod = period;
+    final workerId = technician && mineOnly ? userId : null;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => PdfExportPage(
+              title: 'PDF rekap order',
+              filename: pdfFileName(
+                'rekap-order-${periodLabel(selectedPeriod)}${workerId == null ? '' : '-$name'}',
+              ),
+              description:
+                  '${periodLabel(selectedPeriod)}${workerId == null ? '' : ' · Order yang memuat pekerjaan $name'}. ${widget.repo.canViewWages ? 'Laporan internal untuk owner dan teknisi.' : 'Rekap tagihan dan pembayaran pelanggan.'}',
+              generate: () async {
+                final rows = await widget.repo.allOrders(
+                  selectedPeriod,
+                  workerId: workerId,
+                );
+                final report = OrderReport(
+                  reportOrders(rows, selectedPeriod),
+                  includeWages: widget.repo.canViewWages,
+                );
+                return (await PeronaPdf.load()).orders(
+                  report,
+                  selectedPeriod,
+                  workerName: workerId == null ? null : name,
+                );
+              },
+            ),
+      ),
+    );
   }
 
   void selectTab(int value) {
@@ -176,7 +257,11 @@ class _HomePageState extends State<HomePage> {
                   semanticLabel: 'Perona Sepatu',
                 ),
                 Text(
-                  owner ? 'Portal Owner' : 'Portal Pegawai',
+                  owner
+                      ? 'Portal Owner'
+                      : admin
+                      ? 'Portal Admin'
+                      : 'Portal Teknisi',
                   style: const TextStyle(
                     fontSize: 12,
                     color: PeronaColors.muted,
@@ -237,10 +322,11 @@ class _HomePageState extends State<HomePage> {
                         28,
                       ),
                       children: switch (tab) {
-                        0 => owner ? ownerHome() : staffHome(),
+                        0 => admin ? adminHome() : ownerHome(),
                         1 => orderList(),
                         2 => catalog(),
-                        _ => owner ? people() : staffHome(),
+                        3 => wagesPage(),
+                        _ => owner ? people() : ownerHome(),
                       },
                     ),
               ),
@@ -256,18 +342,25 @@ class _HomePageState extends State<HomePage> {
           NavigationDestination(
             icon: const Icon(Icons.space_dashboard_outlined),
             selectedIcon: const Icon(Icons.space_dashboard_rounded),
-            label: owner ? 'Ringkasan' : 'Beranda',
+            label: admin ? 'Beranda' : 'Ringkasan',
           ),
           const NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon: Icon(Icons.receipt_long),
             label: 'Order',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.sell_outlined),
-            selectedIcon: Icon(Icons.sell),
-            label: 'Layanan',
-          ),
+          if (!admin)
+            const NavigationDestination(
+              icon: Icon(Icons.sell_outlined),
+              selectedIcon: Icon(Icons.sell),
+              label: 'Layanan',
+            ),
+          if (!admin)
+            const NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: 'Ongkos',
+            ),
           if (owner)
             const NavigationDestination(
               icon: Icon(Icons.people_outline),
@@ -346,7 +439,11 @@ class _HomePageState extends State<HomePage> {
   );
 
   List<Widget> ownerHome() => [
-    greeting('Pantau usaha dan kelola tim Perona Sepatu.'),
+    greeting(
+      owner
+          ? 'Pantau usaha dan kelola tim Perona Sepatu.'
+          : 'Pantau order dan perkembangan usaha Perona Sepatu.',
+    ),
     periodPicker(),
     const SizedBox(height: 16),
     _HeroCard(
@@ -373,10 +470,10 @@ class _HomePageState extends State<HomePage> {
           'Tagihan setelah diskon',
         ),
         _Metric(
-          'Ongkos tim',
-          rp(summary['labor']),
-          Icons.groups_outlined,
-          'Hak upah saat order masuk',
+          'Jumlah order',
+          '${summary['count'] ?? 0}',
+          Icons.inventory_2_outlined,
+          'Order masuk pada periode ini',
         ),
         _Metric(
           'Piutang usaha',
@@ -392,19 +489,75 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     ),
-    if (pendingCount > 0) ...[
+    if (owner && pendingCount > 0) ...[
       const SizedBox(height: 14),
       _Notice(
         icon: Icons.person_add_alt_1_outlined,
         text:
             '$pendingCount akun menunggu aktivasi. Buka Pegawai untuk memberi akses.',
-        onTap: () => selectTab(3),
+        onTap: () => selectTab(4),
+      ),
+    ],
+    const SizedBox(height: 24),
+    _SectionTitle(
+      title: 'Order terbaru',
+      subtitle: 'Dari periode yang kamu pilih',
+      action: TextButton(
+        onPressed: () => selectTab(1),
+        child: const Text('Lihat semua'),
+      ),
+    ),
+    const SizedBox(height: 12),
+    ...orderCards(preview: true),
+  ];
+
+  List<Widget> adminHome() => [
+    greeting('Catat layanan dan pembayaran pelanggan.'),
+    periodPicker(),
+    const SizedBox(height: 16),
+    FilledButton.icon(
+      onPressed: () => editor(),
+      icon: const Icon(Icons.add),
+      label: const Text('Input order pelanggan'),
+    ),
+    const SizedBox(height: 20),
+    _SectionTitle(
+      title: 'Order terbaru',
+      subtitle: 'Order pelanggan pada periode terpilih',
+      action: TextButton(
+        onPressed: () => selectTab(1),
+        child: const Text('Lihat semua'),
+      ),
+    ),
+    const SizedBox(height: 12),
+    ...orderCards(preview: true),
+  ];
+
+  List<Widget> wagesPage() => [
+    const _SectionTitle(
+      title: 'Ongkos pegawai',
+      subtitle: 'Hak upah dari layanan yang masuk pada periode terpilih',
+    ),
+    const SizedBox(height: 20),
+    periodPicker(),
+    const SizedBox(height: 16),
+    _HeroCard(
+      label: 'Total ongkos tim',
+      value: rp(summary['labor']),
+      description: 'Ongkos tercatat untuk seluruh penanggung jawab layanan.',
+      icon: Icons.groups_outlined,
+      footer: 'Hak upah tercatat; belum menunjukkan pembayaran gaji.',
+    ),
+    if (technician) ...[
+      const SizedBox(height: 16),
+      _Panel(
+        child: _PriceLabel(label: 'Ongkos kerja saya', value: rp(ownWage)),
       ),
     ],
     const SizedBox(height: 24),
     const _SectionTitle(
       title: 'Ongkos kerja tim',
-      subtitle: 'Hak upah dari order pada periode terpilih',
+      subtitle: 'Ketuk nama pegawai untuk rincian customer dan unduhan PDF',
     ),
     const SizedBox(height: 12),
     wagesPanel(),
@@ -434,62 +587,6 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     ),
-    const SizedBox(height: 24),
-    _SectionTitle(
-      title: 'Order terbaru',
-      subtitle: 'Dari periode yang kamu pilih',
-      action: TextButton(
-        onPressed: () => selectTab(1),
-        child: const Text('Lihat semua'),
-      ),
-    ),
-    const SizedBox(height: 12),
-    ...orderCards(preview: true),
-  ];
-
-  List<Widget> staffHome() => [
-    greeting('Lihat tugas dan catat layanan pelanggan hari ini.'),
-    periodPicker(),
-    const SizedBox(height: 16),
-    _HeroCard(
-      label: 'Ongkos kerja saya',
-      value: rp(ownWage),
-      description: 'Hak ongkosmu dari order pada periode terpilih.',
-      icon: Icons.work_outline_rounded,
-      footer: 'Dicatat saat order masuk; belum menunjukkan pembayaran gaji.',
-    ),
-    const SizedBox(height: 16),
-    FilledButton.icon(
-      onPressed: () => editor(),
-      icon: const Icon(Icons.add_rounded),
-      label: const Text('Input order pelanggan'),
-    ),
-    const SizedBox(height: 12),
-    _Notice(
-      icon: Icons.tips_and_updates_outlined,
-      text:
-          'Buka order untuk memperbarui status, menambah foto, atau mencatat pembayaran.',
-    ),
-    const SizedBox(height: 24),
-    _SectionTitle(
-      title: 'Pekerjaan saya',
-      subtitle: 'Order yang memiliki layanan atas namamu',
-      action: TextButton(
-        onPressed: () {
-          setState(() => mineOnly = true);
-          selectTab(1);
-        },
-        child: const Text('Lihat semua'),
-      ),
-    ),
-    const SizedBox(height: 12),
-    ...orderCards(preview: true, personal: true),
-    const SizedBox(height: 20),
-    OutlinedButton.icon(
-      onPressed: () => selectTab(2),
-      icon: const Icon(Icons.sell_outlined),
-      label: const Text('Lihat daftar layanan & harga'),
-    ),
   ];
 
   Widget wagesPanel() {
@@ -508,25 +605,34 @@ class _HomePageState extends State<HomePage> {
         children: [
           for (var i = 0; i < wages.length; i++) ...[
             if (i > 0) const Divider(),
-            Row(
-              children: [
-                _Avatar(name: wages[i]['name'] as String),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    wages[i]['name'] as String,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
+            InkWell(
+              key: ValueKey('worker-wage-${wages[i]['id']}'),
+              onTap: () => workerDetail(Json.from(wages[i] as Map)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    _Avatar(name: wages[i]['name'] as String),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        wages[i]['name'] as String,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        rp(wages[i]['amount']),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, color: PeronaColors.muted),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    rp(wages[i]['amount']),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 10),
             LinearProgressIndicator(
@@ -558,7 +664,13 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.add),
       label: const Text('Buat order baru'),
     ),
-    if (!owner) ...[
+    const SizedBox(height: 10),
+    OutlinedButton.icon(
+      onPressed: exportOrders,
+      icon: const Icon(Icons.download_outlined),
+      label: const Text('Unduh rekap PDF'),
+    ),
+    if (technician) ...[
       const SizedBox(height: 12),
       Wrap(
         spacing: 8,
@@ -589,40 +701,140 @@ class _HomePageState extends State<HomePage> {
       ),
     ],
     const SizedBox(height: 20),
-    ...orderCards(personal: !owner && mineOnly),
-    const SizedBox(height: 12),
-    _Panel(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        children: [
-          TextButton(
-            onPressed:
-                page == 0
-                    ? null
-                    : () {
-                      setState(() => page--);
-                      load();
-                    },
-            child: const Text('Sebelumnya'),
-          ),
-          Text('Halaman ${page + 1}', style: const TextStyle(fontSize: 12)),
-          TextButton(
-            onPressed:
-                orders.length < 30
-                    ? null
-                    : () {
-                      setState(() => page++);
-                      load();
-                    },
-            child: const Text('Berikutnya'),
-          ),
-        ],
+    if (kind == 'month')
+      ...dateCards()
+    else ...[
+      ...orderCards(personal: technician && mineOnly),
+      const SizedBox(height: 12),
+      _Panel(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          children: [
+            TextButton(
+              onPressed:
+                  page == 0
+                      ? null
+                      : () {
+                        setState(() => page--);
+                        load();
+                      },
+              child: const Text('Sebelumnya'),
+            ),
+            Text('Halaman ${page + 1}', style: const TextStyle(fontSize: 12)),
+            TextButton(
+              onPressed:
+                  orders.length < 30
+                      ? null
+                      : () {
+                        setState(() => page++);
+                        load();
+                      },
+              child: const Text('Berikutnya'),
+            ),
+          ],
+        ),
       ),
-    ),
+    ],
   ];
+
+  List<Widget> dateCards() {
+    final days = DateTime.utc(date.year, date.month + 1, 0).day;
+    const weekdays = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    return [
+      _SectionTitle(
+        title: 'Tanggal order',
+        subtitle:
+            '${dayCounts.values.fold<int>(0, (sum, count) => sum + count)} order pada bulan ini. Ketuk tanggal untuk melihat pelanggan.',
+      ),
+      const SizedBox(height: 12),
+      for (var day = 1; day <= days; day++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Card(
+            child: InkWell(
+              key: ValueKey('order-day-$day'),
+              onTap: () => openDay(DateTime.utc(date.year, date.month, day)),
+              borderRadius: BorderRadius.circular(18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: PeronaColors.lime,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$day'.padLeft(2, '0'),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: PeronaColors.forest,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$day $dateLabel',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            weekdays[DateTime.utc(
+                                  date.year,
+                                  date.month,
+                                  day,
+                                ).weekday -
+                                1],
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: PeronaColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${dayCounts[day] ?? 0} order',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: PeronaColors.muted,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: PeronaColors.muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
 
   List<Widget> orderCards({bool preview = false, bool personal = false}) {
     if (orders.isEmpty) {
@@ -780,9 +992,9 @@ class _HomePageState extends State<HomePage> {
       metrics: [
         _Metric(
           'Akun aktif',
-          '${staff.where((p) => ['owner', 'staff'].contains(p['role'])).length}',
+          '${staff.where((p) => ['owner', 'staff', 'technician', 'admin'].contains(p['role'])).length}',
           Icons.verified_user_outlined,
-          'Owner dan pegawai',
+          'Owner, admin, dan teknisi',
         ),
         _Metric(
           'Menunggu',
@@ -823,7 +1035,8 @@ class _HomePageState extends State<HomePage> {
                     _Badge(
                       label: switch (person['role']) {
                         'owner' => 'Owner',
-                        'staff' => 'Pegawai aktif',
+                        'staff' || 'technician' => 'Teknisi',
+                        'admin' => 'Admin',
                         'pending' => 'Menunggu aktivasi',
                         _ => 'Nonaktif',
                       },
@@ -854,8 +1067,12 @@ class _HomePageState extends State<HomePage> {
                   itemBuilder:
                       (_) => const [
                         PopupMenuItem(
-                          value: 'staff',
-                          child: Text('Aktifkan sebagai pegawai'),
+                          value: 'technician',
+                          child: Text('Aktifkan sebagai teknisi'),
+                        ),
+                        PopupMenuItem(
+                          value: 'admin',
+                          child: Text('Aktifkan sebagai admin'),
                         ),
                         PopupMenuItem(
                           value: 'owner',
@@ -1221,10 +1438,6 @@ class _OrderCard extends StatelessWidget {
             .map((payment) => payment['method'] as String)
             .toSet();
     final photoCount = ((order['order_photos'] as List?) ?? []).length;
-    final wage = items.fold<int>(
-      0,
-      (sum, item) => sum + money(item['labor_fee']) * money(item['quantity']),
-    );
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -1289,10 +1502,7 @@ class _OrderCard extends StatelessWidget {
                 spacing: 24,
                 runSpacing: 12,
                 children: [
-                  _PriceLabel(
-                    label: workerId == null ? 'Tagihan' : 'Ongkos saya',
-                    value: rp(workerId == null ? order['total'] : wage),
-                  ),
+                  _PriceLabel(label: 'Tagihan', value: rp(order['total'])),
                   _PriceLabel(
                     label: 'Sisa tagihan pelanggan',
                     value: rp(remaining),

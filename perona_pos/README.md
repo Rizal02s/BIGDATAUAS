@@ -2,7 +2,13 @@
 
 MVP kasir jasa Perona Sepatu untuk Android. Dibuat dari nol berdasarkan dua gambar yang diberikan pada 2 Oktober 2026.
 
-**Status:** kode aplikasi dan database tersedia. Pada 3 Oktober 2026, analisis Flutter pada `lib`/`test`, 32 tes domain/widget/HTTP, dan build APK debug berhasil. APK debug sudah dipasang pada emulator Pixel 6 untuk pemeriksaan tampilan. Kamera di perangkat nyata, integrasi transaksi/foto Supabase secara menyeluruh, dan APK release belum diverifikasi. Gunakan data uji dahulu.
+**Versi terbaru:** `0.1.3+4` menambahkan nota pelanggan, rincian ongkos per pegawai,
+dan rekap periode yang dapat diunduh/dibagikan sebagai PDF. Form order hanya
+menampilkan harga pelanggan. Cara penggunaan ada di [panduan PDF](docs/PDF.md).
+Pembatasan admin menggunakan migrasi 003; jika belum diterapkan ke Supabase,
+ikuti [panduan akses](docs/AKSES.md). Release memakai signing proyek yang sama
+dengan APK sebelumnya; signing permanen serta uji tiga akun/perangkat nyata
+belum dilakukan.
 
 ## Keputusan yang sudah dipilih
 
@@ -16,21 +22,25 @@ MVP kasir jasa Perona Sepatu untuk Android. Dibuat dari nol berdasarkan dua gamb
 ## Fitur yang ada dalam kode
 
 **Home sesuai peran:** owner mendapat ringkasan usaha dan pengelolaan tim;
-pegawai mendapat ongkos pribadinya serta pekerjaan yang ditugaskan kepadanya.
-Navigasi owner: Ringkasan, Order, Layanan, Pegawai. Navigasi pegawai: Beranda,
-Order, Layanan. Rincian tampilan dan hasil pemeriksaan ada di [docs/UI.md](docs/UI.md).
+teknisi mendapat ringkasan usaha dan ongkos seluruh tim; admin hanya operasional
+order tanpa akses ongkos. Ongkos dipindahkan ke halaman sendiri.
+Navigasi owner: Ringkasan, Order, Layanan, Ongkos, Pegawai. Navigasi teknisi:
+Ringkasan, Order, Layanan, Ongkos. Admin: Beranda, Order.
+Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 
 | Halaman | Fungsi |
 |---|---|
 | Masuk/daftar | Akun email/password; akun baru menunggu aktivasi owner |
-| Rekap | Periode harian, bulanan, tahunan; nilai order, pembayaran masuk, ongkos, diskon, piutang, rincian upah per pegawai |
+| Rekap | Owner/teknisi: periode harian, bulanan, tahunan; nilai order, pembayaran masuk, diskon, piutang |
+| Ongkos | Owner/teknisi: hak upah tim; ketuk pegawai untuk tabel pekerjaan dan unduh PDF |
 | Input order | Pelanggan, nomor WA, catatan, layanan, jumlah, penanggung jawab, status, diskon, pembayaran awal Tunai/QRIS/Belum lunas, serta foto kamera/galeri |
-| Detail order | Ringkasan lunas/piutang dan metode bayar, layanan/pegawai, edit, pembayaran bertahap, riwayat pembayaran, dan foto barang |
+| Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota PDF tanpa ongkos |
+| PDF rekap | Seluruh order periode terpilih dan ringkasan tagihan/piutang; ongkos/gaji hanya untuk owner/teknisi |
 | Layanan | 32 tarif awal; owner dapat tambah, edit, nonaktifkan layanan tanpa dashboard backend |
-| Pegawai | Owner mengaktifkan, menonaktifkan, atau memberi akses owner kepada akun terdaftar |
+| Pegawai | Owner mengaktifkan sebagai admin/teknisi/owner atau menonaktifkan akun terdaftar |
 | Penghapusan | Owner dapat menghapus order dari rekap dengan alasan; jejak audit disimpan |
 
-**Pegawai aktif dapat melihat seluruh transaksi dan tarif ongkos untuk operasional bersama.** Privasi upah hanya untuk masing-masing pegawai belum diterapkan pada MVP ini. Owner mengelola tarif, akun, penghapusan, dan koreksi pembayaran. Pegawai boleh input/edit order, foto dan pembayaran. Rancangan ini untuk satu usaha/outlet dalam satu proyek Supabase.
+**Owner dan teknisi dapat membaca ongkos seluruh tim. Admin tidak dapat membaca ongkos.** Pembatasan admin memerlukan migrasi `003_roles_and_wage_privacy.sql`; API menghapus tarif ongkos dari JSON order/layanan, dan rekap ongkos ditolak. Owner mengelola tarif, akun, penghapusan, dan koreksi pembayaran. Ketiga peran dapat input/edit order, foto, dan pembayaran. Rancangan ini untuk satu usaha/outlet dalam satu proyek Supabase.
 
 ## Contoh hitungan
 
@@ -57,6 +67,7 @@ Jika dua Deep Clean dikerjakan Pegawai A dan ODS oleh Pegawai B, upah A Rp20.000
 - `lib/domain.dart`: perhitungan rupiah dan batas periode WIB.
 - `supabase/001_schema.sql`: tabel, validasi transaksi, hak akses, audit, bucket foto privat.
 - `supabase/002_seed.sql`: 32 layanan awal; tidak menimpa tarif yang telah diubah owner jika dijalankan ulang.
+- `supabase/003_roles_and_wage_privacy.sql`: migrasi peran admin/teknisi dan pembatasan data ongkos admin; aman untuk proyek yang sudah berjalan.
 - `data/price_list.csv` dan `data/services.json`: transkripsi harga.
 - `test/domain_test.dart`: tes domain untuk `flutter test`.
 - `scripts/domain_checks.dart`: tes domain Dart mandiri yang telah dijalankan.
@@ -96,7 +107,7 @@ Jika menjalankan `flutter create` manual, simpan salinan kode terlebih dahulu da
 
 1. Buat akun dan proyek **Free** di [Supabase](https://supabase.com/), pilih region dekat pengguna jika tersedia. Simpan password database di tempat pribadi.
 2. Di SQL Editor, jalankan seluruh `supabase/001_schema.sql` **sekali, pada proyek baru**. Jangan jalankan pada database usaha lain atau mengulang migrasi awal yang sudah berhasil.
-3. Jalankan `supabase/002_seed.sql` untuk mengisi price list.
+3. Jalankan `supabase/002_seed.sql` untuk mengisi price list, lalu `supabase/003_roles_and_wage_privacy.sql` untuk hak akses admin/teknisi. Untuk proyek yang sudah menjalankan 001/002, cukup jalankan 003.
 4. Untuk pilot internal tanpa layanan email, atur Authentication → Email agar konfirmasi email tidak diwajibkan. Akun tetap menunggu persetujuan owner di aplikasi. Jika menggunakan konfirmasi email, siapkan SMTP dan URL konfirmasinya lebih dahulu.
 5. Ambil **Project URL** dan **publishable key / anon key** dari pengaturan API/Connect proyek. Nama menu dashboard bisa berubah.
 6. Salin `config.example.json` menjadi `config.json` dan isi dua nilai tersebut.
@@ -194,6 +205,6 @@ Sumber utama: [Supabase pricing](https://supabase.com/pricing), [project pausing
 - Tidak ada refund sungguhan, pembayaran mundur tanggal, customer database tersendiri, export/nota PDF, printer Bluetooth, atau multi-outlet.
 - Foto yang sudah terhubung belum bisa diganti/hapus lewat UI. Cleanup objek gagal unggah yang belum terhubung hanya diizinkan untuk pemiliknya.
 - Audit disimpan dan hanya bisa dibaca owner melalui API/database; viewer audit di aplikasi belum dibuat.
-- Tarif dan perubahan peran diatur owner; staff melihat semua order, foto, ongkos, dan rekap.
+- Tarif dan perubahan peran diatur owner; teknisi melihat semua order, foto, ongkos, dan rekap. Admin hanya data operasional order, tanpa ongkos/rekap usaha.
 - Paginasi order 30/halaman; agregasi rekap berada di server sehingga tidak dibatasi 1.000 baris API. Daftar layanan/pegawai juga dipaginasi.
-- Build debug dan pemeriksaan tampilan emulator sudah dilakukan; belum build release atau pengujian pada HP nyata. Mulai dari pilot internal, lalu perbaiki hasil uji sebelum operasional.
+- Build debug/release dan pemeriksaan tampilan emulator sudah dilakukan. Release masih memakai signing debug; signing permanen dan pengujian pada HP nyata belum dilakukan. Mulai dari pilot internal, lalu perbaiki hasil uji sebelum operasional.

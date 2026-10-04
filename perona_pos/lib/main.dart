@@ -8,9 +8,14 @@ import 'domain.dart';
 import 'repository.dart';
 import 'app_theme.dart';
 import 'order_submission.dart';
+import 'report_data.dart';
+import 'pdf_documents.dart';
+import 'pdf_export.dart';
 
 part 'home_page.dart';
 part 'order_editor.dart';
+part 'order_day_page.dart';
+part 'worker_detail_page.dart';
 
 final rupiah = NumberFormat.currency(
   locale: 'id_ID',
@@ -245,7 +250,13 @@ class _AccountGateState extends State<AccountGate> {
       if (result.connectionState != ConnectionState.done) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (result.hasData && ['owner', 'staff'].contains(result.data!['role'])) {
+      if (result.hasData &&
+          [
+            'owner',
+            'staff',
+            'admin',
+            'technician',
+          ].contains(result.data!['role'])) {
         return HomePage(repo: repo, profile: result.data!);
       }
       return Scaffold(
@@ -263,7 +274,10 @@ class _AccountGateState extends State<AccountGate> {
               ),
               const SizedBox(height: 20),
               FilledButton(
-                onPressed: () => setState(() => future = repo.profile()),
+                onPressed:
+                    () => setState(() {
+                      future = repo.profile();
+                    }),
                 child: const Text('Periksa status'),
               ),
               TextButton(
@@ -284,7 +298,12 @@ int paidTotal(Json o) => ((o['payments'] as List?) ?? [])
 
 class ServicePicker extends StatefulWidget {
   final List<Json> services;
-  const ServicePicker({super.key, required this.services});
+  final bool showWages;
+  const ServicePicker({
+    super.key,
+    required this.services,
+    this.showWages = true,
+  });
   @override
   State<ServicePicker> createState() => _ServicePickerState();
 }
@@ -314,14 +333,17 @@ class _ServicePickerState extends State<ServicePicker> {
                       .where(
                         (s) =>
                             s['active'] == true &&
-                            s['labor_fee'] != null &&
+                            (s['labor_fee'] != null ||
+                                s['orderable'] == true) &&
                             (s['name'] as String).toLowerCase().contains(query),
                       )
                       .map(
                         (s) => ListTile(
                           title: Text(s['name'] as String),
                           subtitle: Text(
-                            '${rp(s['price'])} • Ongkos ${rp(s['labor_fee'])}',
+                            widget.showWages
+                                ? '${rp(s['price'])} • Ongkos ${rp(s['labor_fee'])}'
+                                : rp(s['price']),
                           ),
                           onTap: () => Navigator.pop(context, s),
                         ),
@@ -516,12 +538,11 @@ class _OrderDetailState extends State<OrderDetail> {
                 child: ListTile(
                   title: Text('${item['name']} × ${item['quantity']}'),
                   subtitle: Text(
-                    '${item['status']} • ${workerName(item['worker_id'] as String)}\nOngkos ${rp(money(item['labor_fee']) * money(item['quantity']))}',
+                    '${item['status']} • ${workerName(item['worker_id'] as String)}',
                   ),
                   trailing: Text(
                     rp(money(item['price']) * money(item['quantity'])),
                   ),
-                  isThreeLine: true,
                 ),
               ),
             ),
@@ -531,9 +552,17 @@ class _OrderDetailState extends State<OrderDetail> {
               'Total: ${rp(o['total'])}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            Text('Total ongkos: ${rp(o['labor_total'])}'),
             Text('Sudah dibayar: ${rp(paid)}'),
             Text('Sisa tagihan: ${rp(remaining)}'),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed:
+                  busy
+                      ? null
+                      : () => openReceipt(context, widget.repo, widget.id),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Nota PDF pelanggan'),
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,

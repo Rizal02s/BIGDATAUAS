@@ -1,5 +1,36 @@
 # Hasil verifikasi
 
+**Nota/rincian PDF, 4 Oktober 2026 (`0.1.3+4`):** 58 tes Flutter lulus dan
+`flutter analyze lib test tool` tanpa temuan. APK release 58,8 MB dibangun dari
+`lib/main.dart`, dipasang sebagai update pada emulator Pixel 6, dan akun owner
+tetap masuk. Generator PDF serta UI ekspor diuji untuk periode bulanan,
+pagination 61 order, filter pegawai, pembayaran dikoreksi, nama panjang,
+55 layanan dalam satu order, periode kosong, pembatalan/gagal unduh, dan retry
+nota tanpa menyimpan ulang order.
+
+Contoh nota, rincian pegawai, dan rekap 45 order dirender untuk pemeriksaan
+tata letak. Ekstraksi teks memverifikasi total, seluruh order, serta ketiadaan
+ongkos/upah/gaji pada nota dan rekap admin. Unduhan Android nyata menghasilkan
+PDF valid di Downloads; dialog bagikan menampilkan WhatsApp, dan dialog cetak
+menampilkan satu halaman nota. Uji Android PDF memakai data contoh tanpa
+Supabase; tidak ada pesan dikirim ataupun order produksi dibuat. Printer
+fisik/pengiriman ke customer pada HP nyata belum diuji. Tidak ada migrasi SQL
+baru. Panduan penggunaan: [PDF.md](PDF.md).
+
+**Riwayat peran baru pada 4 Oktober 2026:** 45 tes Flutter dan 55 pemeriksaan PostgreSQL
+lokal lulus. Admin memakai API tanpa tarif/snapshot ongkos dan ditolak membaca
+rekap upah atau tabel mentah; input order, pembayaran, serta upload/link foto
+tetap berhasil di tes SQL. Owner/teknisi melihat ongkos tim pada halaman sendiri.
+Migrasi 003 belum diterapkan pada backend online karena dashboard belum login.
+Lihat [AKSES.md](AKSES.md) untuk penerapan dan batas pengujian.
+
+**Pembaruan 4 Oktober 2026:** 39 tes lulus, `flutter analyze lib test` tanpa
+temuan, dan build APK release `0.1.1+2` berhasil. Daftar tanggal bulanan diuji
+untuk batas WIB, semua halaman timestamp, filter pegawai, tanggal kosong,
+navigasi detail/kembali, pemulihan dari error, paginasi satu hari, dan layar kecil
+dengan teks 150%. Release masih memakai signing debug proyek; ini APK untuk uji,
+bukan bukti signing operasional permanen. Tidak ada migrasi database.
+
 **Pembaruan 3 Oktober 2026:** analisis `lib`/`test`, 16 tes domain/widget,
 build APK debug, dan pemasangan pada emulator Pixel 6 berhasil. Rincian dan
 preview UI sesuai peran ada di [UI.md](UI.md). Catatan 2 Oktober berikut adalah

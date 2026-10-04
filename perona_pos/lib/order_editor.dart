@@ -60,9 +60,15 @@ class _OrderEditorState extends State<OrderEditor> {
     final selected = await showModalBottomSheet<Json>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => ServicePicker(services: widget.services),
+      builder:
+          (_) => ServicePicker(services: widget.services, showWages: false),
     );
     if (selected == null || !mounted) return;
+    final defaultWorker =
+        widget.staff
+            .where((person) => ['staff', 'technician'].contains(person['role']))
+            .firstOrNull ??
+        widget.staff.where((person) => person['role'] == 'owner').firstOrNull;
     setState(
       () => items.add({
         'id': const Uuid().v4(),
@@ -72,7 +78,10 @@ class _OrderEditorState extends State<OrderEditor> {
         'price': selected['price'],
         'labor_fee': selected['labor_fee'],
         'quantity': 1,
-        'worker_id': widget.repo.userId,
+        'worker_id':
+            widget.repo.isAdmin
+                ? (defaultWorker == null ? null : defaultWorker['id'])
+                : widget.repo.userId,
         'status': 'Masuk',
       }),
     );
@@ -111,7 +120,7 @@ class _OrderEditorState extends State<OrderEditor> {
     }
   }
 
-  Future<void> save() async {
+  Future<void> save({bool withReceipt = false}) async {
     if (busy) return;
     FocusScope.of(context).unfocus();
     if (!submission.locked) {
@@ -129,7 +138,11 @@ class _OrderEditorState extends State<OrderEditor> {
         return;
       }
       try {
-        Totals.fromItems(items, int.parse(discount.text));
+        Totals.fromItems(
+          items,
+          int.parse(discount.text),
+          includeLabor: widget.repo.canViewWages,
+        );
       } catch (error) {
         message(context, errorText(error));
         return;
@@ -153,6 +166,11 @@ class _OrderEditorState extends State<OrderEditor> {
         paymentMethod: payment == 'Belum lunas' ? null : payment,
         photos: photos,
       );
+      if (mounted && withReceipt) {
+        // PDF failures are handled on their own page, after the complete save.
+        // Retrying a receipt never submits a second order or payment.
+        await openReceipt(context, widget.repo, id);
+      }
       if (mounted) {
         setState(() {
           busy = false;
@@ -218,7 +236,11 @@ class _OrderEditorState extends State<OrderEditor> {
   Widget build(BuildContext context) {
     Totals? total;
     try {
-      total = Totals.fromItems(items, int.tryParse(discount.text) ?? -1);
+      total = Totals.fromItems(
+        items,
+        int.tryParse(discount.text) ?? -1,
+        includeLabor: widget.repo.canViewWages,
+      );
     } catch (_) {}
     return PopScope(
       canPop: finishing || (!busy && !submission.locked),
@@ -299,11 +321,11 @@ class _OrderEditorState extends State<OrderEditor> {
                           ),
                           const SizedBox(height: 12),
                           if (items.isEmpty)
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.only(bottom: 12),
                               child: Text(
-                                'Pilih layanan untuk menghitung tagihan dan ongkos kerja.',
-                                style: TextStyle(
+                                'Pilih layanan untuk menghitung tagihan pelanggan.',
+                                style: const TextStyle(
                                   color: PeronaColors.muted,
                                   height: 1.5,
                                 ),
@@ -370,12 +392,8 @@ class _OrderEditorState extends State<OrderEditor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Ongkos kerja: ${total == null ? '—' : rp(total.labor)}',
-                    ),
-                    const SizedBox(height: 8),
                     const Text(
-                      'Diskon tidak mengurangi ongkos. Hak upah dicatat saat order masuk.',
+                      'Periksa tagihan sebelum menyimpan. Nota PDF bisa diunduh atau dikirim ke pelanggan.',
                       style: TextStyle(
                         fontSize: 12,
                         color: PeronaColors.muted,
@@ -395,7 +413,7 @@ class _OrderEditorState extends State<OrderEditor> {
               ],
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: busy ? null : save,
+                onPressed: busy ? null : () => save(),
                 icon:
                     busy
                         ? const SizedBox(
@@ -411,6 +429,12 @@ class _OrderEditorState extends State<OrderEditor> {
                       ? 'Coba simpan kembali'
                       : 'Simpan order',
                 ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () => save(withReceipt: true),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Simpan & buat nota PDF'),
               ),
               if (saveFailure != null && submission.orderSaved)
                 TextButton(
@@ -571,7 +595,7 @@ class _OrderEditorState extends State<OrderEditor> {
         widget.staff
             .where(
               (person) =>
-                  ['staff', 'owner'].contains(person['role']) ||
+                  ['staff', 'owner', 'technician'].contains(person['role']) ||
                   person['id'] == item['worker_id'],
             )
             .toList();
@@ -601,7 +625,7 @@ class _OrderEditorState extends State<OrderEditor> {
               ],
             ),
             Text(
-              '${rp(item['price'])} / unit · ongkos ${rp(item['labor_fee'])} / unit',
+              '${rp(item['price'])} / unit',
               style: const TextStyle(fontSize: 12, color: PeronaColors.muted),
             ),
             const SizedBox(height: 14),

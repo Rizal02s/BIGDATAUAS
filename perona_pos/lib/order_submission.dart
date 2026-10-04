@@ -83,6 +83,7 @@ class OrderSubmission {
             Totals.fromItems(
               (_snapshot!['items'] as List).cast<Json>(),
               money(_snapshot!['discount']),
+              includeLabor: repo.canViewWages,
             ).revenue;
         if (money(saved['total']) != quoted) {
           throw OrderTotalChanged(money(saved['total']));
