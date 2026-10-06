@@ -16,10 +16,12 @@ class SubmissionRepository extends DemoRepository {
   final paymentCalls = <Json>[];
   final receipts = <String, Json>{};
   final photoCalls = <String>[];
+  Json? savedDraft;
 
   @override
   Future<void> saveOrder(Json order) async {
     saves++;
+    savedDraft = order;
     if (rejectSave) {
       throw const PostgrestException(message: 'Tarif tidak valid.');
     }
@@ -44,13 +46,15 @@ class SubmissionRepository extends DemoRepository {
     String paymentId,
     String orderId,
     int amount,
-    String method,
-  ) async {
+    String method, {
+    DateTime? paidAt,
+  }) async {
     final receipt = {
       'id': paymentId,
       'amount': amount,
       'method': method,
       'voided_at': null,
+      'paid_at': paidAt?.toUtc().toIso8601String(),
     };
     paymentCalls.add(receipt);
     receipts.putIfAbsent(paymentId, () => receipt);
@@ -85,6 +89,28 @@ Json draft() => {
 };
 
 void main() {
+  test(
+    'Backdated order and initial payment keep their date after lost response',
+    () async {
+      final repo = SubmissionRepository()..lostPaymentResponse = true;
+      final submission = OrderSubmission(repo, isNew: true);
+      final order = draft()..['created_at'] = '2026-10-03T03:15:00.000Z';
+      await expectLater(
+        submission.submit(order, paymentMethod: 'Tunai'),
+        throwsException,
+      );
+      final changed = draft()..['created_at'] = '2026-10-06T05:30:00.000Z';
+      await submission.submit(changed, paymentMethod: 'Tunai');
+      expect(repo.savedDraft!['created_at'], order['created_at']);
+      expect(repo.saves, 1);
+      expect(repo.paymentCalls.length, 2);
+      expect(
+        repo.paymentCalls.every((p) => p['paid_at'] == order['created_at']),
+        true,
+      );
+      expect(repo.receipts.length, 1);
+    },
+  );
   for (final method in ['Tunai', 'QRIS']) {
     test('$method settles the confirmed bill', () async {
       final repo = SubmissionRepository();

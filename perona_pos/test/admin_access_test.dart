@@ -14,7 +14,6 @@ import 'order_editor_test.dart' show openEditor, addService;
 import 'order_submission_test.dart' show SubmissionRepository;
 
 class AdminSubmissionRepository extends SubmissionRepository {
-  Json? savedDraft;
   AdminSubmissionRepository() {
     accessRole = 'admin';
   }

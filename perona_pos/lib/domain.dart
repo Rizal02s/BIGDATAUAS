@@ -3,6 +3,17 @@ typedef Json = Map<String, dynamic>;
 // Semua nilai uang berupa rupiah bulat, bukan floating point.
 int money(dynamic value) => (value as num?)?.toInt() ?? 0;
 DateTime jakarta(DateTime value) => value.toUtc().add(const Duration(hours: 7));
+// Date/time picker fields represent WIB, regardless of the phone's timezone.
+DateTime jakartaToUtc(DateTime value) => DateTime.utc(
+  value.year,
+  value.month,
+  value.day,
+  value.hour,
+  value.minute,
+  value.second,
+  value.millisecond,
+  value.microsecond,
+).subtract(const Duration(hours: 7));
 
 class Period {
   final DateTime start;

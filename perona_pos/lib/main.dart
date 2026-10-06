@@ -30,7 +30,14 @@ String errorText(Object error) {
   if (error is OrderTotalChanged) {
     return 'Tarif berubah. Tagihan tersimpan ${rp(error.total)}. Buka detail order untuk memeriksa dan mencatat pembayaran yang benar.';
   }
-  if (error is PostgrestException) return error.message;
+  if (error is PostgrestException) {
+    if (error.code == 'PGRST202' &&
+        (error.message.contains('save_order_with_date') ||
+            error.message.contains('add_payment_with_date'))) {
+      return 'Fitur tanggal manual belum aktif di Supabase. Owner perlu menjalankan pembaruan 004_manual_order_dates.sql terlebih dahulu.';
+    }
+    return error.message;
+  }
   if (error is AuthException) return error.message;
   if (error is StorageException) return error.message;
   return 'Proses gagal. Periksa koneksi dan coba kembali. ${error is ArgumentError ? error.message : ''}';

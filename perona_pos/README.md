@@ -2,7 +2,12 @@
 
 MVP kasir jasa Perona Sepatu untuk Android. Dibuat dari nol berdasarkan dua gambar yang diberikan pada 2 Oktober 2026.
 
-**Versi terbaru:** `0.1.3+4` menambahkan nota pelanggan, rincian ongkos per pegawai,
+**Versi terbaru:** `0.1.4+5` menambahkan tanggal dan jam order manual dalam WIB,
+termasuk untuk mencatat order lama. Rekap, ongkos, dan nota mengikuti tanggal
+order; pembayaran awal Tunai/QRIS mengikuti tanggal yang sama. Panduan ada di
+[tanggal order](docs/TANGGAL_ORDER.md). Migrasi backend 004 diperlukan.
+
+Versi `0.1.3+4` menambahkan nota pelanggan, rincian ongkos per pegawai,
 dan rekap periode yang dapat diunduh/dibagikan sebagai PDF. Form order hanya
 menampilkan harga pelanggan. Cara penggunaan ada di [panduan PDF](docs/PDF.md).
 Pembatasan admin menggunakan migrasi 003; jika belum diterapkan ke Supabase,
@@ -33,7 +38,7 @@ Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 | Masuk/daftar | Akun email/password; akun baru menunggu aktivasi owner |
 | Rekap | Owner/teknisi: periode harian, bulanan, tahunan; nilai order, pembayaran masuk, diskon, piutang |
 | Ongkos | Owner/teknisi: hak upah tim; ketuk pegawai untuk tabel pekerjaan dan unduh PDF |
-| Input order | Pelanggan, nomor WA, catatan, layanan, jumlah, penanggung jawab, status, diskon, pembayaran awal Tunai/QRIS/Belum lunas, serta foto kamera/galeri |
+| Input order | Tanggal/jam order manual (WIB), pelanggan, nomor WA, catatan, layanan, jumlah, penanggung jawab, status, diskon, pembayaran awal Tunai/QRIS/Belum lunas, serta foto kamera/galeri |
 | Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota PDF tanpa ongkos |
 | PDF rekap | Seluruh order periode terpilih dan ringkasan tagihan/piutang; ongkos/gaji hanya untuk owner/teknisi |
 | Layanan | 32 tarif awal; owner dapat tambah, edit, nonaktifkan layanan tanpa dashboard backend |
@@ -68,6 +73,7 @@ Jika dua Deep Clean dikerjakan Pegawai A dan ODS oleh Pegawai B, upah A Rp20.000
 - `supabase/001_schema.sql`: tabel, validasi transaksi, hak akses, audit, bucket foto privat.
 - `supabase/002_seed.sql`: 32 layanan awal; tidak menimpa tarif yang telah diubah owner jika dijalankan ulang.
 - `supabase/003_roles_and_wage_privacy.sql`: migrasi peran admin/teknisi dan pembatasan data ongkos admin; aman untuk proyek yang sudah berjalan.
+- `supabase/004_manual_order_dates.sql`: tanggal order/pembayaran awal manual dan waktu input asli; tetap mendukung APK lama.
 - `data/price_list.csv` dan `data/services.json`: transkripsi harga.
 - `test/domain_test.dart`: tes domain untuk `flutter test`.
 - `scripts/domain_checks.dart`: tes domain Dart mandiri yang telah dijalankan.
@@ -107,7 +113,7 @@ Jika menjalankan `flutter create` manual, simpan salinan kode terlebih dahulu da
 
 1. Buat akun dan proyek **Free** di [Supabase](https://supabase.com/), pilih region dekat pengguna jika tersedia. Simpan password database di tempat pribadi.
 2. Di SQL Editor, jalankan seluruh `supabase/001_schema.sql` **sekali, pada proyek baru**. Jangan jalankan pada database usaha lain atau mengulang migrasi awal yang sudah berhasil.
-3. Jalankan `supabase/002_seed.sql` untuk mengisi price list, lalu `supabase/003_roles_and_wage_privacy.sql` untuk hak akses admin/teknisi. Untuk proyek yang sudah menjalankan 001/002, cukup jalankan 003.
+3. Jalankan `supabase/002_seed.sql` untuk mengisi price list, lalu `supabase/003_roles_and_wage_privacy.sql` untuk hak akses admin/teknisi, dan `supabase/004_manual_order_dates.sql` untuk tanggal manual. Untuk proyek yang sudah menjalankan 001–003, cukup jalankan 004.
 4. Untuk pilot internal tanpa layanan email, atur Authentication → Email agar konfirmasi email tidak diwajibkan. Akun tetap menunggu persetujuan owner di aplikasi. Jika menggunakan konfirmasi email, siapkan SMTP dan URL konfirmasinya lebih dahulu.
 5. Ambil **Project URL** dan **publishable key / anon key** dari pengaturan API/Connect proyek. Nama menu dashboard bisa berubah.
 6. Salin `config.example.json` menjadi `config.json` dan isi dua nilai tersebut.

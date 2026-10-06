@@ -94,7 +94,14 @@ class OrderSubmission {
         _paymentAmount = money(saved['total']) - paid;
       }
       if (_paymentAmount! > 0) {
-        await repo.pay(paymentId, id, _paymentAmount!, _method!);
+        final orderAt = _snapshot!['created_at'] as String?;
+        await repo.pay(
+          paymentId,
+          id,
+          _paymentAmount!,
+          _method!,
+          paidAt: orderAt == null ? null : DateTime.parse(orderAt),
+        );
       }
       paymentSaved = true;
     }

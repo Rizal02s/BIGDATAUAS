@@ -158,7 +158,7 @@ class Repository {
               .single();
   Future<void> saveOrder(Json order) async {
     await db.rpc(
-      'save_order',
+      'save_order_with_date',
       params: {
         'p_id': order['id'],
         'p_version': order['version'] ?? 0,
@@ -167,6 +167,7 @@ class Repository {
         'p_notes': order['notes'],
         'p_discount': order['discount'],
         'p_items': order['items'],
+        'p_order_at': order['created_at'],
       },
     );
   }
@@ -175,15 +176,17 @@ class Repository {
     String paymentId,
     String orderId,
     int amount,
-    String method,
-  ) async {
+    String method, {
+    DateTime? paidAt,
+  }) async {
     await db.rpc(
-      'add_payment',
+      paidAt == null ? 'add_payment' : 'add_payment_with_date',
       params: {
         'p_id': paymentId,
         'p_order': orderId,
         'p_amount': amount,
         'p_method': method,
+        if (paidAt != null) 'p_paid_at': paidAt.toUtc().toIso8601String(),
       },
     );
   }

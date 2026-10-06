@@ -1,6 +1,12 @@
 # Tampilan owner dan pegawai
 
-**Versi terbaru 0.1.3+4:** Form order tidak menampilkan ongkos untuk semua peran.
+**Versi terbaru 0.1.4+5:** Bagian data pelanggan memiliki tombol Tanggal order
+dan Jam order (WIB). Tanggal awal adalah hari ini; order lama dapat dicatat
+dengan memilih tanggal lain. Edit order menampilkan tanggal yang sudah tersimpan.
+Rekap, ongkos, dan nota mengikuti tanggal order. Pembayaran awal mengikuti tanggal
+order; pembayaran susulan tetap pada hari pembayaran. Lihat [TANGGAL_ORDER.md](TANGGAL_ORDER.md).
+
+**Versi 0.1.3+4:** Form order tidak menampilkan ongkos untuk semua peran.
 Ada pilihan menyimpan saja atau membuat nota PDF pelanggan. Halaman Ongkos
 memiliki rincian pekerjaan pegawai yang dapat dibuka dan diunduh, sedangkan
 halaman Order menyediakan unduhan rekap periode lengkap.

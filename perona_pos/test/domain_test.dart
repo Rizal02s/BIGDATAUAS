@@ -7,6 +7,31 @@ Json line(int price, int labor, int qty) => {
   'quantity': qty,
 };
 void main() {
+  test('Manual date/time uses WIB fields independently of device timezone', () {
+    for (final wallClock in [
+      DateTime(2026, 10, 3),
+      DateTime.utc(2026, 10, 3),
+    ]) {
+      final actual = jakartaToUtc(wallClock);
+      expect(actual, DateTime.utc(2026, 10, 2, 17));
+      expect(
+        Period.forDate(DateTime(2026, 10, 3), 'day').contains(actual),
+        true,
+      );
+      expect(
+        Period.forDate(DateTime(2026, 10, 2), 'day').contains(actual),
+        false,
+      );
+    }
+    expect(
+      jakartaToUtc(DateTime.utc(2027, 1, 1, 0, 15)),
+      DateTime.utc(2026, 12, 31, 17, 15),
+    );
+    expect(
+      jakartaToUtc(DateTime.utc(2028, 2, 29, 23, 59)),
+      DateTime.utc(2028, 2, 29, 16, 59),
+    );
+  });
   test('Admin can quote a bill without access to labor rates', () {
     final items = <Json>[
       {'price': 30000, 'quantity': 2},

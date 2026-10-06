@@ -1,5 +1,24 @@
 # Hasil verifikasi
 
+**Tanggal order manual, 6 Oktober 2026 (`0.1.4+5`):** 65 tes Flutter lulus,
+`flutter analyze lib test tool` tanpa temuan, dan 82 pemeriksaan PostgreSQL
+lokal + RLS/RPC lulus. Tes mencakup memilih 3 Oktober pada form, jam manual,
+batas tengah malam WIB, pergantian tahun/kabisat, edit tanpa mengubah tanggal,
+retry pembayaran yang mempertahankan tanggal/ID, rekap/nota/ongkos sesuai tanggal,
+penolakan tanggal tidak valid, akses admin/pending/anon, dan kompatibilitas RPC
+APK lama. Preview form diperiksa di [tanggal manual](ui/order-manual-date.png).
+
+Migrasi `004_manual_order_dates.sql` diterapkan pada proyek Supabase Perona
+melalui SQL Editor. Hasil **Success. No rows returned**; pemeriksaan kedua
+fungsi, kedua kolom riwayat input, dan tidak adanya riwayat kosong semuanya
+mengembalikan `true`. Bukti di [verifikasi Supabase](ui/manual-date-supabase.png).
+Pemeriksaan online ini hanya memverifikasi migrasi; tidak menambah customer/order
+percobaan pada database usaha. Tes transaksi/RLS memakai PostgreSQL lokal.
+
+Build APK release 59,3 MB berhasil dan dipasang sebagai update pada emulator
+Pixel 6. Tetap memakai signing proyek yang sama dengan APK sebelumnya.
+Pemasangan dan input order pada HP fisik belum diuji dalam pembaruan ini.
+
 **Nota/rincian PDF, 4 Oktober 2026 (`0.1.3+4`):** 58 tes Flutter lulus dan
 `flutter analyze lib test tool` tanpa temuan. APK release 58,8 MB dibangun dari
 `lib/main.dart`, dipasang sebagai update pada emulator Pixel 6, dan akun owner

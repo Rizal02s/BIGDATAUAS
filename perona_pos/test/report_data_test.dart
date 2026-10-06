@@ -52,6 +52,22 @@ class PagedRepository extends DemoRepository {
 
 void main() {
   final period = Period.forDate(DateTime(2026, 10, 1), 'month');
+  test(
+    'Backfilled order uses selected date in receipt, wage detail and period exports',
+    () {
+      final row = sampleOrder(createdAt: '2026-10-02T17:05:00Z')
+        ..['recorded_at'] = '2026-10-06T03:00:00Z';
+      final selectedDay = Period.forDate(DateTime(2026, 10, 3), 'day');
+      final inputDay = Period.forDate(DateTime(2026, 10, 6), 'day');
+      expect(reportOrders([row], selectedDay), [row]);
+      expect(reportOrders([row], inputDay), isEmpty);
+      final receipt = CustomerReceipt.fromOrder(row);
+      expect(jakarta(receipt.createdAt), DateTime.utc(2026, 10, 3, 0, 5));
+      final report = WorkerReport(reportOrders([row], selectedDay), 'staff-a');
+      expect(report.total, 20000);
+      expect(report.entries.length, 1);
+    },
+  );
   test('export reads every page and preserves worker filter', () async {
     final repo = PagedRepository();
     final rows = await repo.allOrders(period, workerId: 'staff-a');

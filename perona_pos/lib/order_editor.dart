@@ -23,6 +23,7 @@ class _OrderEditorState extends State<OrderEditor> {
   late String id;
   late List<Json> items;
   late OrderSubmission submission;
+  late DateTime orderAtWib;
   final photos = <PendingOrderPhoto>[];
   String payment = 'Belum lunas';
   String? saveFailure;
@@ -33,6 +34,11 @@ class _OrderEditorState extends State<OrderEditor> {
   void initState() {
     super.initState();
     final order = widget.existing ?? {};
+    orderAtWib = jakarta(
+      order['created_at'] == null
+          ? DateTime.now()
+          : DateTime.parse(order['created_at'] as String),
+    );
     id = order['id'] as String? ?? const Uuid().v4();
     customer = TextEditingController(
       text: order['customer_name'] as String? ?? '',
@@ -85,6 +91,58 @@ class _OrderEditorState extends State<OrderEditor> {
         'status': 'Masuk',
       }),
     );
+  }
+
+  Future<void> chooseOrderDate() async {
+    FocusScope.of(context).unfocus();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(orderAtWib.year, orderAtWib.month, orderAtWib.day),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Pilih tanggal order',
+    );
+    if (picked != null && mounted) {
+      setState(
+        () =>
+            orderAtWib = DateTime.utc(
+              picked.year,
+              picked.month,
+              picked.day,
+              orderAtWib.hour,
+              orderAtWib.minute,
+              orderAtWib.second,
+              orderAtWib.millisecond,
+              orderAtWib.microsecond,
+            ),
+      );
+    }
+  }
+
+  Future<void> chooseOrderTime() async {
+    FocusScope.of(context).unfocus();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: orderAtWib.hour, minute: orderAtWib.minute),
+      helpText: 'Jam order (WIB)',
+      builder:
+          (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
+    );
+    if (picked != null && mounted) {
+      setState(
+        () =>
+            orderAtWib = DateTime.utc(
+              orderAtWib.year,
+              orderAtWib.month,
+              orderAtWib.day,
+              picked.hour,
+              picked.minute,
+            ),
+      );
+    }
   }
 
   Future<void> pickPhoto(ImageSource source) async {
@@ -158,6 +216,7 @@ class _OrderEditorState extends State<OrderEditor> {
           'id': id,
           'version': widget.existing?['version'] ?? 0,
           'customer_name': customer.text.trim(),
+          'created_at': jakartaToUtc(orderAtWib).toIso8601String(),
           'phone': phone.text.trim(),
           'notes': notes.text.trim(),
           'discount': int.parse(discount.text),
@@ -275,6 +334,33 @@ class _OrderEditorState extends State<OrderEditor> {
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            key: const ValueKey('order-date-picker'),
+                            onPressed: editable ? chooseOrderDate : null,
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            label: Text(
+                              'Tanggal order: ${DateFormat('dd/MM/yyyy').format(orderAtWib)}',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            key: const ValueKey('order-time-picker'),
+                            onPressed: editable ? chooseOrderTime : null,
+                            icon: const Icon(Icons.schedule_outlined),
+                            label: Text(
+                              'Jam order: ${DateFormat('HH:mm').format(orderAtWib)} WIB',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Pilih tanggal saat customer masuk, termasuk order lama yang belum dicatat. Rekap mengikuti tanggal ini.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: PeronaColors.muted,
+                              height: 1.5,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -489,7 +575,7 @@ class _OrderEditorState extends State<OrderEditor> {
         Text(
           payment == 'Belum lunas'
               ? 'Belum ada pembayaran. Tagihan dapat dibayar bertahap dari detail order.'
-              : 'Catat pelunasan $payment sebesar ${total == null ? 'nilai tagihan' : rp(total.revenue)}.',
+              : 'Catat pelunasan $payment sebesar ${total == null ? 'nilai tagihan' : rp(total.revenue)} pada ${DateFormat('dd/MM/yyyy').format(orderAtWib)} (tanggal order).',
           style: const TextStyle(
             fontSize: 12,
             height: 1.5,
