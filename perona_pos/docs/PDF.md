@@ -4,6 +4,11 @@ Versi `0.1.3+4`, 4 Oktober 2026.
 
 ## Nota untuk pelanggan
 
+**Pembaruan 0.1.5+6:** nota pelanggan kini menggunakan gambar PNG dengan tombol
+unduh dan berbagi ke WhatsApp. Lihat [panduan nota gambar](NOTA.md).
+Bagian nota PDF di bawah mendokumentasikan alur versi 0.1.3+4; laporan rekap
+dan rincian ongkos pada bagian berikut tetap menggunakan PDF.
+
 Pada akhir form order, pilih **Simpan order** untuk menyimpan saja atau
 **Simpan & buat nota PDF** untuk menyimpan lalu membuka nota. Nota juga dapat
 dibuka lagi melalui **Nota PDF pelanggan** di detail order.

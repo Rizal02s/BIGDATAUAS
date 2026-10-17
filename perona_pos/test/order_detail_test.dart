@@ -59,7 +59,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('1 foto'), findsWidgets);
+    expect(find.text('1 foto'), findsNothing);
     await tester.tap(find.text('Andi Pratama'));
     await tester.pumpAndSettle();
     expect(find.text('Detail order'), findsOneWidget);

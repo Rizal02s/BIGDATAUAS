@@ -479,7 +479,7 @@ class _OrderEditorState extends State<OrderEditor> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Periksa tagihan sebelum menyimpan. Nota PDF bisa diunduh atau dikirim ke pelanggan.',
+                      'Periksa tagihan sebelum menyimpan. Nota bisa diunduh sebagai gambar atau dibagikan ke WhatsApp pelanggan.',
                       style: TextStyle(
                         fontSize: 12,
                         color: PeronaColors.muted,
@@ -520,7 +520,7 @@ class _OrderEditorState extends State<OrderEditor> {
               OutlinedButton.icon(
                 onPressed: busy ? null : () => save(withReceipt: true),
                 icon: const Icon(Icons.receipt_long_outlined),
-                label: const Text('Simpan & buat nota PDF'),
+                label: const Text('Simpan & buat nota'),
               ),
               if (saveFailure != null && submission.orderSaved)
                 TextButton(

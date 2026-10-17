@@ -1,5 +1,14 @@
 # Tampilan owner dan pegawai
 
+**Penyederhanaan daftar order:** kartu menampilkan tanggal order (WIB), nama
+pelanggan, nominal tagihan setelah diskon, satu status pengerjaan, dan status
+pembayaran (Belum bayar, DP, Lunas). Pembayaran yang dikoreksi tidak dihitung.
+Jika status layanan bercampur, kartu menampilkan Dikerjakan; jika semuanya
+Selesai/Diambil, kartu menampilkan Selesai, dan jika seluruhnya Diambil maka
+menampilkan Diambil. Pada filter Pekerjaan saya, status hanya merangkum layanan
+teknisi tersebut. Ketuk kartu untuk melihat layanan, foto, metode pembayaran,
+sisa tagihan, dan detail lainnya.
+
 **Versi terbaru 0.1.4+5:** Bagian data pelanggan memiliki tombol Tanggal order
 dan Jam order (WIB). Tanggal awal adalah hari ini; order lama dapat dicatat
 dengan memilih tanggal lain. Edit order menampilkan tanggal yang sudah tersimpan.

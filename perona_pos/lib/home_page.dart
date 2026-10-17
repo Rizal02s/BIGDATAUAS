@@ -1428,17 +1428,27 @@ class _OrderCard extends StatelessWidget {
             .where((item) => workerId == null || item['worker_id'] == workerId)
             .toList();
     final statuses = items.map((item) => item['status'] as String).toSet();
-    final remaining = money(order['total']) - paidTotal(order);
-    final methods =
-        ((order['payments'] as List?) ?? [])
-            .where(
-              (payment) =>
-                  payment['voided_at'] == null && payment['method'] != null,
+    // Mixed progress must not label the entire order as finished. In the
+    // technician's personal view this summarizes only their assigned services.
+    final workStatus =
+        statuses.isEmpty
+            ? 'Belum ada layanan'
+            : statuses.length == 1
+            ? statuses.single
+            : statuses.every(
+              (status) => ['Selesai', 'Diambil'].contains(status),
             )
-            .map((payment) => payment['method'] as String)
-            .toSet();
-    final photoCount = ((order['order_photos'] as List?) ?? []).length;
+            ? 'Selesai'
+            : 'Dikerjakan';
+    final paid = paidTotal(order);
+    final paymentStatus =
+        paid >= money(order['total'])
+            ? 'Lunas'
+            : paid > 0
+            ? 'DP'
+            : 'Belum bayar';
     return Card(
+      key: ValueKey('order-card-${order['id']}'),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
@@ -1451,72 +1461,89 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      order['customer_name'] as String,
+                      DateFormat('dd/MM/yyyy').format(
+                        jakarta(DateTime.parse(order['created_at'] as String)),
+                      ),
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: PeronaColors.muted,
                       ),
                     ),
                   ),
                   const Icon(
                     Icons.chevron_right_rounded,
                     color: PeronaColors.muted,
+                    size: 20,
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
-              Text(
-                '#${order['number']}  ·  ${stamp(order['created_at'])} WIB',
-                style: const TextStyle(fontSize: 11, color: PeronaColors.muted),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                items
-                    .map((item) => '${item['name']} × ${item['quantity']}')
-                    .join(' · '),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, height: 1.5),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  ...statuses.map(
-                    (status) => _Badge(
-                      label: status,
-                      warning: ['Masuk', 'Dikerjakan'].contains(status),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      order['customer_name'] as String,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  _Badge(
-                    label: remaining <= 0 ? 'Lunas' : 'Belum lunas',
-                    warning: remaining > 0,
-                  ),
-                  ...methods.map((method) => _Badge(label: method)),
-                  if (photoCount > 0) _Badge(label: '$photoCount foto'),
-                ],
+                    Text(
+                      rp(order['total']),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: PeronaColors.forest,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const Divider(),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 24,
                 runSpacing: 12,
                 children: [
-                  _PriceLabel(label: 'Tagihan', value: rp(order['total'])),
-                  _PriceLabel(
-                    label: 'Sisa tagihan pelanggan',
-                    value: rp(remaining),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Pengerjaan',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: PeronaColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      _Badge(
+                        label: workStatus,
+                        warning: !['Selesai', 'Diambil'].contains(workStatus),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Pembayaran',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: PeronaColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      _Badge(
+                        label: paymentStatus,
+                        warning: paymentStatus != 'Lunas',
+                      ),
+                    ],
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Lihat detail order →',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: PeronaColors.forest,
-                ),
               ),
             ],
           ),

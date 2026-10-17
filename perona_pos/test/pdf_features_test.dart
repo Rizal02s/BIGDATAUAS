@@ -107,7 +107,7 @@ void main() {
   }
 
   testWidgets(
-    'owner input and picker hide wages; receipt failure retries only PDF',
+    'owner input and picker hide wages; receipt retry never saves order twice',
     (tester) async {
       final repo = ReceiptRepository()..accessRole = 'owner';
       await openEditor(tester, repo);
@@ -118,25 +118,33 @@ void main() {
         findsNothing,
       );
       await tester.scrollUntilVisible(
-        find.text('Simpan & buat nota PDF'),
+        find.text('Simpan & buat nota'),
         250,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(find.text('Simpan & buat nota PDF'));
+      await tester.ensureVisible(find.text('Simpan & buat nota'));
       await tester.pumpAndSettle();
       await capture(tester, 'order-save-receipt');
-      await tester.tap(find.text('Simpan & buat nota PDF'));
+      await tester.tap(find.text('Simpan & buat nota'));
       await tester.pumpAndSettle();
       expect(repo.saves, 1);
       expect(find.text('Nota pelanggan'), findsOneWidget);
-      expect(find.text('Coba buat PDF lagi'), findsOneWidget);
+      expect(find.text('Coba buat nota lagi'), findsOneWidget);
       repo.failReceipt = false;
-      await tester.tap(find.text('Coba buat PDF lagi'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Coba buat nota lagi'));
+        // PNG encoding runs in the engine, outside the test's fake clock.
+        for (var attempt = 0; attempt < 100; attempt++) {
+          await tester.pump();
+          if (find.text('Unduh gambar').evaluate().isNotEmpty) break;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      });
       await tester.pumpAndSettle();
       expect(repo.saves, 1);
       expect(repo.reads, 2);
-      expect(find.text('Unduh PDF'), findsOneWidget);
-      expect(find.text('Bagikan PDF'), findsOneWidget);
+      expect(find.text('Unduh gambar'), findsOneWidget);
+      expect(find.text('Bagikan ke WhatsApp'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('Buat order pengujian'), findsOneWidget);

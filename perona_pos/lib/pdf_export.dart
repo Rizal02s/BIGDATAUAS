@@ -6,34 +6,9 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 
 import 'app_theme.dart';
-import 'pdf_documents.dart';
-import 'report_data.dart';
-import 'repository.dart';
 
 String pdfFileName(String name) =>
     '${name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '-').replaceAll(RegExp(r'-+'), '-').toLowerCase()}.pdf';
-
-Future<void> openReceipt(
-  BuildContext context,
-  Repository repo,
-  String id,
-) => Navigator.of(context).push(
-  MaterialPageRoute<void>(
-    builder:
-        (_) => PdfExportPage(
-          title: 'Nota pelanggan',
-          filename: pdfFileName('nota-perona-$id'),
-          description:
-              'Unduh nota atau bagikan PDF, lalu pilih WhatsApp dan customer tujuan.',
-          pageFormat: PdfPageFormat.a5,
-          generate: () async {
-            final order = await repo.order(id);
-            final pdf = await PeronaPdf.load();
-            return pdf.receipt(CustomerReceipt.fromOrder(order));
-          },
-        ),
-  ),
-);
 
 class PdfExportPage extends StatefulWidget {
   final String title, filename, description;

@@ -2,7 +2,12 @@
 
 MVP kasir jasa Perona Sepatu untuk Android. Dibuat dari nol berdasarkan dua gambar yang diberikan pada 2 Oktober 2026.
 
-**Versi terbaru:** `0.1.4+5` menambahkan tanggal dan jam order manual dalam WIB,
+**Versi terbaru:** `0.1.5+6` menyediakan nota pelanggan berupa gambar PNG,
+unduhan ke penyimpanan, dan berbagi ke WhatsApp/WhatsApp Business dengan nomor
+tujuan dari order. Panduan penggunaan dan batas pemilihan penerima ada di
+[nota gambar](docs/NOTA.md). Tidak ada migrasi database baru untuk fitur ini.
+
+Versi `0.1.4+5` menambahkan tanggal dan jam order manual dalam WIB,
 termasuk untuk mencatat order lama. Rekap, ongkos, dan nota mengikuti tanggal
 order; pembayaran awal Tunai/QRIS mengikuti tanggal yang sama. Panduan ada di
 [tanggal order](docs/TANGGAL_ORDER.md). Migrasi backend 004 diperlukan.
@@ -39,7 +44,7 @@ Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 | Rekap | Owner/teknisi: periode harian, bulanan, tahunan; nilai order, pembayaran masuk, diskon, piutang |
 | Ongkos | Owner/teknisi: hak upah tim; ketuk pegawai untuk tabel pekerjaan dan unduh PDF |
 | Input order | Tanggal/jam order manual (WIB), pelanggan, nomor WA, catatan, layanan, jumlah, penanggung jawab, status, diskon, pembayaran awal Tunai/QRIS/Belum lunas, serta foto kamera/galeri |
-| Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota PDF tanpa ongkos |
+| Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota gambar tanpa ongkos; unduh PNG atau bagikan ke WhatsApp |
 | PDF rekap | Seluruh order periode terpilih dan ringkasan tagihan/piutang; ongkos/gaji hanya untuk owner/teknisi |
 | Layanan | 32 tarif awal; owner dapat tambah, edit, nonaktifkan layanan tanpa dashboard backend |
 | Pegawai | Owner mengaktifkan sebagai admin/teknisi/owner atau menonaktifkan akun terdaftar |

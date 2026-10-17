@@ -11,6 +11,7 @@ import 'order_submission.dart';
 import 'report_data.dart';
 import 'pdf_documents.dart';
 import 'pdf_export.dart';
+import 'receipt_export.dart';
 
 part 'home_page.dart';
 part 'order_editor.dart';
@@ -568,7 +569,7 @@ class _OrderDetailState extends State<OrderDetail> {
                       ? null
                       : () => openReceipt(context, widget.repo, widget.id),
               icon: const Icon(Icons.receipt_long_outlined),
-              label: const Text('Nota PDF pelanggan'),
+              label: const Text('Nota pelanggan'),
             ),
             const SizedBox(height: 16),
             Wrap(
