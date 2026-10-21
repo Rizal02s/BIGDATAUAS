@@ -7,6 +7,57 @@ int orderPaid(Json order) => ((order['payments'] as List?) ?? [])
 int orderRemaining(Json order) =>
     (money(order['total']) - orderPaid(order)).clamp(0, money(order['total']));
 
+enum PaymentCategory {
+  unpaid('Customer belum lunas', null),
+  qris('Bayar QRIS', 'QRIS'),
+  cash('Bayar tunai', 'Tunai');
+
+  final String label;
+  final String? method;
+  const PaymentCategory(this.label, this.method);
+}
+
+int orderPaidByMethod(Json order, String method) =>
+    ((order['payments'] as List?) ?? [])
+        .where((p) => p['voided_at'] == null && p['method'] == method)
+        .fold<int>(0, (sum, p) => sum + money(p['amount']));
+
+String customerKey(Json order) {
+  final phone = (order['phone'] as String? ?? '').replaceAll(RegExp(r'\D'), '');
+  if (phone.isEmpty) {
+    return (order['customer_name'] as String).trim().toLowerCase();
+  }
+  return phone.startsWith('0') ? '62${phone.substring(1)}' : phone;
+}
+
+class PaymentOverview {
+  final List<Json> orders;
+  PaymentOverview(List<Json> rows, Period period)
+    : orders = reportOrders(rows, period);
+
+  List<Json> ordersFor(PaymentCategory category) =>
+      orders
+          .where(
+            (order) =>
+                category.method == null
+                    ? orderRemaining(order) > 0
+                    : orderPaidByMethod(order, category.method!) > 0,
+          )
+          .toList();
+
+  int amountFor(PaymentCategory category) => ordersFor(category).fold(
+    0,
+    (sum, order) =>
+        sum +
+        (category.method == null
+            ? orderRemaining(order)
+            : orderPaidByMethod(order, category.method!)),
+  );
+
+  int customerCountFor(PaymentCategory category) =>
+      ordersFor(category).map(customerKey).toSet().length;
+}
+
 String periodLabel(Period period) {
   const months = [
     'Januari',
@@ -96,11 +147,11 @@ class WorkEntry {
 
 class WorkerReport {
   final List<WorkEntry> entries;
-  WorkerReport(List<Json> orders, String workerId)
+  WorkerReport(List<Json> orders, String? workerId)
     : entries = [
         for (final order in orders)
           for (final item in (order['items'] as List))
-            if (item['worker_id'] == workerId)
+            if (workerId == null || item['worker_id'] == workerId)
               WorkEntry(order, Json.from(item as Map)),
       ];
   int get total => entries.fold(0, (sum, e) => sum + e.wage);
@@ -109,6 +160,30 @@ class WorkerReport {
   int get completed => entries
       .where((e) => ['Selesai', 'Diambil'].contains(e.status))
       .fold(0, (sum, e) => sum + e.quantity);
+
+  List<WorkNote> get notes {
+    final byOrder = <String, WorkNote>{};
+    for (final entry in entries) {
+      byOrder
+          .putIfAbsent(
+            entry.order['id'] as String,
+            () => WorkNote(entry.order, []),
+          )
+          .entries
+          .add(entry);
+    }
+    return byOrder.values.toList();
+  }
+}
+
+class WorkNote {
+  final Json order;
+  final List<WorkEntry> entries;
+  WorkNote(this.order, this.entries);
+  int get wage => entries.fold(0, (sum, entry) => sum + entry.wage);
+  String get services => entries
+      .map((entry) => '${entry.item['name']} × ${entry.quantity}')
+      .join('\n');
 }
 
 class OrderReport {
@@ -135,17 +210,7 @@ class OrderReport {
   int get unpaidCustomers =>
       orders
           .where((o) => orderRemaining(o) > 0)
-          .map((o) {
-            final phone = (o['phone'] as String? ?? '').replaceAll(
-              RegExp(r'\D'),
-              '',
-            );
-            final normalized =
-                phone.startsWith('0') ? '62${phone.substring(1)}' : phone;
-            return normalized.isEmpty
-                ? (o['customer_name'] as String).trim().toLowerCase()
-                : normalized;
-          })
+          .map(customerKey)
           .toSet()
           .length;
 }

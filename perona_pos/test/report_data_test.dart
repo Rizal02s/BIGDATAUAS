@@ -95,6 +95,36 @@ void main() {
     expect(report.orderCount, 1);
     expect(report.total, 20000);
   });
+  test(
+    'wage notes group services by receipt and keep each technician scope',
+    () {
+      final order = sampleOrder();
+      (order['items'] as List).add({
+        'name': 'Fast Clean',
+        'quantity': 3,
+        'labor_fee': 5000,
+        'worker_id': 'staff-a',
+        'status': 'Masuk',
+      });
+      final sameCustomer = {
+        ...sampleOrder(index: 2),
+        'customer_name': 'Customer 1',
+      };
+      final own = WorkerReport([order, sameCustomer], 'staff-a');
+      expect(own.notes.length, 2);
+      expect(own.notes.first.wage, 35000);
+      expect(own.notes.first.services, 'Deep Clean × 2\nFast Clean × 3');
+      expect(own.notes.fold<int>(0, (sum, note) => sum + note.wage), own.total);
+      final team = WorkerReport([order, sameCustomer], null);
+      expect(team.notes.length, 2);
+      expect(team.notes.first.wage, 45000);
+      expect(team.notes.first.services, contains('Perawatan sepatu kulit × 1'));
+      expect(
+        team.notes.fold<int>(0, (sum, note) => sum + note.wage),
+        team.total,
+      );
+    },
+  );
   test('unpaid counts deduplicate customers and ignore voided payments', () {
     final report = OrderReport([
       sampleOrder(index: 1, phone: '0812 345'),

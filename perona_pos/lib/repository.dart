@@ -191,7 +191,7 @@ class Repository {
     );
   }
 
-  Future<void> delete(Json order, String reason) async {
+  Future<void> _deleteOrder(Json order, String reason) async {
     await db.rpc(
       'delete_order',
       params: {
@@ -200,6 +200,41 @@ class Repository {
         'p_reason': reason,
       },
     );
+  }
+
+  Future<void> delete(Json selected, String reason) async {
+    try {
+      // Migration 005 deletes the order and corrects payments atomically.
+      await _deleteOrder(selected, reason);
+      return;
+    } on PostgrestException catch (error) {
+      // Older deployments require payment corrections before deletion. Perform
+      // those owner-authorized corrections automatically after confirmation.
+      if (error.code != 'P0001' ||
+          !error.message.startsWith('Masih ada pembayaran.')) {
+        rethrow;
+      }
+    }
+    final current = await order(selected['id'] as String);
+    if (current['version'] != selected['version']) {
+      throw StateError('Order berubah. Muat ulang terlebih dahulu.');
+    }
+    var expectedVersion = money(current['version']);
+    final payments =
+        ((current['payments'] as List?) ?? [])
+            .where((payment) => payment['voided_at'] == null)
+            .toList();
+    for (final payment in payments) {
+      await voidPayment(payment['id'] as String, 'Order dihapus: $reason');
+      expectedVersion++;
+    }
+    final refreshed = await order(selected['id'] as String);
+    // Only our payment corrections may advance the version. Concurrent edits
+    // or new payments still require a fresh confirmation for the changed order.
+    if (refreshed['version'] != expectedVersion) {
+      throw StateError('Order berubah. Muat ulang terlebih dahulu.');
+    }
+    await _deleteOrder(refreshed, reason);
   }
 
   Future<void> voidPayment(String id, String reason) async {

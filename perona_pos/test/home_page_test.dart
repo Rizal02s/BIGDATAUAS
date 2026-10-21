@@ -79,7 +79,7 @@ class DemoRepository extends Repository {
         'created_at': '2026-10-03T03:15:00Z',
         'total': 90000,
         'payments': [
-          {'amount': 30000, 'voided_at': null},
+          {'amount': 30000, 'method': 'Tunai', 'voided_at': null},
         ],
         'items': [
           {
@@ -107,7 +107,7 @@ class DemoRepository extends Repository {
         'created_at': '2026-10-03T02:30:00Z',
         'total': 50000,
         'payments': [
-          {'amount': 50000, 'voided_at': null},
+          {'amount': 50000, 'method': 'QRIS', 'voided_at': null},
         ],
         'items': [
           {
@@ -236,8 +236,9 @@ void main() {
     addTearDown(() => tester.runAsync(repo.db.dispose));
     await pumpHome(tester, repo, 'owner');
     expect(find.text('Portal Owner'), findsOneWidget);
-    expect(find.text('Pembayaran masuk'), findsOneWidget);
-    expect(find.text('Rp420.000'), findsOneWidget);
+    expect(find.text('Total order bulan ini'), findsOneWidget);
+    expect(find.text('Bayar QRIS'), findsOneWidget);
+    expect(find.text('Rp50.000'), findsWidgets);
     expect(find.text('Pegawai'), findsOneWidget);
     expect(repo.workerFilters.last, isNull);
     await capture(tester, 'owner-home');
@@ -256,7 +257,7 @@ void main() {
     await pumpHome(tester, repo, 'staff');
     expect(find.text('Portal Teknisi'), findsOneWidget);
     expect(find.text('Ongkos kerja saya'), findsNothing);
-    expect(find.text('Pembayaran masuk'), findsOneWidget);
+    expect(find.text('Customer belum lunas'), findsOneWidget);
     expect(find.text('Pegawai'), findsNothing);
     expect(repo.workerFilters.last, isNull);
     await capture(tester, 'staff-home');
@@ -294,7 +295,7 @@ void main() {
     await tester.tap(find.text('Ringkasan'));
     await tester.pumpAndSettle();
     expect(repo.workerFilters.last, isNull);
-    expect(find.text('Pembayaran masuk'), findsOneWidget);
+    expect(find.text('Total order bulan ini'), findsOneWidget);
   });
 
   testWidgets('staff catalog has no price edit or account management actions', (

@@ -16,7 +16,9 @@ import 'receipt_export.dart';
 part 'home_page.dart';
 part 'order_editor.dart';
 part 'order_day_page.dart';
+part 'order_deletion.dart';
 part 'worker_detail_page.dart';
+part 'payment_detail_page.dart';
 
 final rupiah = NumberFormat.currency(
   locale: 'id_ID',
@@ -449,21 +451,9 @@ class _OrderDetailState extends State<OrderDetail> {
   }
 
   Future<void> delete(Json o) async {
-    final reason = await askReason(
-      context,
-      'Hapus order dari rekap?',
-      'Order dan upah keluar dari rekap. Riwayat tetap disimpan. Hanya untuk koreksi; bukan pencatatan refund.',
-    );
-    if (reason == null || !mounted) return;
-    setState(() => busy = true);
-    try {
-      await widget.repo.delete(o, reason);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) message(context, errorText(e));
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
+    if (!widget.owner) return;
+    final deleted = await _showOrderDeletion(context, widget.repo, order: o);
+    if (mounted && deleted != null && deleted > 0) Navigator.pop(context);
   }
 
   Future<void> voidPay(Json pay) async {

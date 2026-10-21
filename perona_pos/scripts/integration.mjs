@@ -224,5 +224,47 @@ await db.exec('reset role');
 await db.exec(dateMigration);
 dated = (await db.query('select * from orders where id=$1',[datedId])).rows[0];
 check([new Date(dated.recorded_at).toISOString(),new Date(dated.created_at).toISOString()],[recordedAt,'2026-09-29T17:00:00.000Z'],'Rerunning date migration preserves selected and actual dates');
+// A single confirmation deletes any payment status and corrects its payments
+// atomically. Keep the pre-migration checks above to verify the upgrade path.
+const deletionMigration = await readFile(new URL('../supabase/005_simple_order_deletion.sql', import.meta.url), 'utf8');
+const beforeDeletionMigration = (await db.query('select count(*)::int n from orders where deleted_at is null')).rows[0].n;
+await db.exec(deletionMigration);
+await db.exec(deletionMigration);
+check((await db.query('select count(*)::int n from orders where deleted_at is null')).rows[0].n,beforeDeletionMigration,'Deletion migration is repeatable and does not delete existing orders');
+const currentReport = async () => (await db.query("select period_report(now()-interval '1 day',now()+interval '1 day') data")).rows[0].data;
+for (const amount of [0,15000,45000]) {
+ await asUser(owner);
+ const base = await currentReport();
+ const id = randomUUID(), paymentIds = [];
+ await db.query(save,[id,0,`Delete payment status ${amount}`,'','',0,JSON.stringify([{...adminItem,id:randomUUID()}])]);
+ if (amount>0) {
+  // Two payments exercise the transaction across more than one receipt.
+  for (const part of [5000,amount-5000]) {
+   const paymentId = randomUUID(); paymentIds.push(paymentId);
+   await db.query('select add_payment($1,$2,$3,$4)',[paymentId,id,part,'Tunai']);
+  }
+ }
+ const version = amount>0 ? 3 : 1;
+ for (const roleId of [admin,technician,pending]) {
+  await asUser(roleId);
+  await fails('select delete_order($1,$2)',[id,version],/Hanya owner/,'Non-owner cannot use simple deletion');
+ }
+ await db.exec('reset role; set role anon');
+ await fails('select delete_order($1,$2)',[id,version],/permission denied/,'Anonymous cannot delete an order');
+ await asUser(owner);
+ await fails('select delete_order($1,$2)',[id,null],/versi order wajib/,'Simple deletion still requires a version');
+ await fails('select delete_order($1,$2)',[id,version+1],/Order berubah/,'Stale deletion does not change order or payments');
+ check((await db.query('select count(*)::int n from payments where order_id=$1 and voided_at is null',[id])).rows[0].n,paymentIds.length,'Rejected delete preserves active payments');
+ await db.query('select delete_order($1,$2)',[id,version]);
+ const removed = (await db.query('select * from orders where id=$1',[id])).rows[0];
+ check([removed.deleted_at!==null,removed.delete_reason],[true,'Dihapus oleh owner.'],'Yes confirmation soft deletes without a typed reason');
+ check((await db.query('select count(*)::int n from payments where order_id=$1',[id])).rows[0].n,paymentIds.length,'Deleting keeps original payment history');
+ check((await db.query('select count(*)::int n from payments where order_id=$1 and voided_at is null',[id])).rows[0].n,0,'Deleting automatically voids active payment records');
+ check((await db.query("select count(*)::int n from audit_log where action='payment.void' and entity_id=any($1::uuid[])",[paymentIds])).rows[0].n,paymentIds.length,'Each automatic payment correction is audited');
+ check((await db.query("select count(*)::int n from audit_log where action='order.delete' and entity_id=$1",[id])).rows[0].n,1,'Order deletion has one audit entry');
+ const result = await currentReport();
+ check(['count','revenue','labor','cash','outstanding_all'].map(k=>Number(result[k])),['count','revenue','labor','cash','outstanding_all'].map(k=>Number(base[k])),'Unpaid, partial and full deletions restore all recap totals');
+ await fails('select add_payment($1,$2,$3,$4)',[randomUUID(),id,1,'Tunai'],/Order tidak ditemukan/,'A deleted order cannot receive new payments');
+}
 console.log(`PASS: ${checks} pemeriksaan PostgreSQL + RLS/RPC`);
 await db.close();

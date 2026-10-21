@@ -82,6 +82,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Bulanan'));
         await tester.pumpAndSettle();
+        repo.exportReads = 0;
         await tester.ensureVisible(find.text('Unduh rekap PDF'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Unduh rekap PDF'));
@@ -182,9 +183,9 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Customer 1'), findsOneWidget);
-      expect(find.text('Deep Clean\nSelesai'), findsOneWidget);
-      expect(find.text('Perawatan sepatu kulit\nMasuk'), findsNothing);
+      expect(find.textContaining('Customer 1'), findsOneWidget);
+      expect(find.text('Deep Clean × 2'), findsOneWidget);
+      expect(find.textContaining('Perawatan sepatu kulit'), findsNothing);
       expect(
         tester.widget<DataTable>(find.byType(DataTable)).columns.length,
         5,

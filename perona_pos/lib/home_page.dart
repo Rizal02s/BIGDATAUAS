@@ -12,6 +12,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<Json> services = [], staff = [], orders = [];
   Json summary = {};
+  PaymentOverview? overview;
+  Period overviewPeriod = Period.forDate(jakarta(DateTime.now()), 'month');
   Map<int, int> dayCounts = {};
   DateTime date = jakarta(DateTime.now());
   String kind = 'day', catalogQuery = '';
@@ -49,6 +51,8 @@ class _HomePageState extends State<HomePage> {
     final token = ++request;
     final workerId = technician && tab == 1 && mineOnly ? userId : null;
     final grouped = tab == 1 && kind == 'month';
+    final monthlyHome = tab == 0 && !admin;
+    final month = Period.forDate(jakarta(DateTime.now()), 'month');
     setState(() {
       busy = true;
       failure = null;
@@ -57,10 +61,12 @@ class _HomePageState extends State<HomePage> {
       final result = await Future.wait<dynamic>([
         widget.repo.services(),
         widget.repo.staff(),
-        grouped
+        monthlyHome
+            ? widget.repo.allOrders(month)
+            : grouped
             ? Future.value(<Json>[])
             : widget.repo.orders(period, page, workerId: workerId),
-        !admin && (tab == 0 || tab == 3)
+        !admin && tab == 3
             ? widget.repo.report(period)
             : Future.value(<String, dynamic>{}),
         grouped
@@ -72,6 +78,11 @@ class _HomePageState extends State<HomePage> {
         services = result[0] as List<Json>;
         staff = result[1] as List<Json>;
         orders = result[2] as List<Json>;
+        if (monthlyHome) {
+          overviewPeriod = month;
+          overview = PaymentOverview(orders, month);
+          orders = overview!.orders.reversed.toList();
+        }
         summary = result[3] as Json;
         dayCounts = result[4] as Map<int, int>;
       });
@@ -133,15 +144,47 @@ class _HomePageState extends State<HomePage> {
     if (mounted) await load();
   }
 
-  Future<void> workerDetail(Json worker) async {
+  Future<void> deleteOrders({DateTime? selected, Json? order}) async {
+    if (!owner) return;
+    await _showOrderDeletion(
+      context,
+      widget.repo,
+      date: selected,
+      order: order,
+    );
+    if (mounted) {
+      page = 0;
+      await load();
+    }
+  }
+
+  Future<void> workerDetail([Json? worker]) async {
+    if (!widget.repo.canViewWages) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder:
             (_) => _WorkerDetailPage(
               repo: widget.repo,
               period: period,
-              workerId: worker['id'] as String,
-              name: worker['name'] as String,
+              workerId: worker?['id'] as String?,
+              name: worker?['name'] as String? ?? 'Semua teknisi',
+              services: services,
+              staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Future<void> paymentDetail(PaymentCategory category) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => _PaymentDetailPage(
+              repo: widget.repo,
+              period: overviewPeriod,
+              category: category,
+              owner: owner,
               services: services,
               staff: staff,
             ),
@@ -439,55 +482,50 @@ class _HomePageState extends State<HomePage> {
   );
 
   List<Widget> ownerHome() => [
-    greeting(
-      owner
-          ? 'Pantau usaha dan kelola tim Perona Sepatu.'
-          : 'Pantau order dan perkembangan usaha Perona Sepatu.',
+    _SectionTitle(
+      title: 'Ringkasan bulan ini',
+      subtitle: '${periodLabel(overviewPeriod)} · Order masuk dalam WIB',
     ),
-    periodPicker(),
     const SizedBox(height: 16),
-    _HeroCard(
-      label: 'Pembayaran masuk',
-      value: rp(summary['cash']),
-      description: 'Uang yang diterima pada periode terpilih.',
-      icon: Icons.account_balance_wallet_outlined,
-      footer:
-          '${summary['count'] ?? 0} order masuk  ·  Nilai ${rp(summary['revenue'])}',
+    _MetricGrid(
+      metrics: [
+        _Metric(
+          'Total order bulan ini',
+          '${overview?.orders.length ?? 0}',
+          Icons.receipt_long_outlined,
+          'Nota masuk pada ${periodLabel(overviewPeriod)}',
+        ),
+        _Metric(
+          PaymentCategory.unpaid.label,
+          '${overview?.customerCountFor(PaymentCategory.unpaid) ?? 0}',
+          Icons.pending_actions,
+          'Sisa tagihan ${rp(overview?.amountFor(PaymentCategory.unpaid))}',
+          onTap: () => paymentDetail(PaymentCategory.unpaid),
+          id: 'unpaid',
+        ),
+        _Metric(
+          PaymentCategory.qris.label,
+          rp(overview?.amountFor(PaymentCategory.qris)),
+          Icons.qr_code_2_rounded,
+          '${overview?.ordersFor(PaymentCategory.qris).length ?? 0} nota · Ketuk untuk rincian',
+          onTap: () => paymentDetail(PaymentCategory.qris),
+          id: 'qris',
+        ),
+        _Metric(
+          PaymentCategory.cash.label,
+          rp(overview?.amountFor(PaymentCategory.cash)),
+          Icons.payments_outlined,
+          '${overview?.ordersFor(PaymentCategory.cash).length ?? 0} nota · Ketuk untuk rincian',
+          onTap: () => paymentDetail(PaymentCategory.cash),
+          id: 'cash',
+        ),
+      ],
     ),
     const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: () => editor(),
       icon: const Icon(Icons.add_rounded),
       label: const Text('Buat order baru'),
-    ),
-    const SizedBox(height: 16),
-    _MetricGrid(
-      metrics: [
-        _Metric(
-          'Nilai order',
-          rp(summary['revenue']),
-          Icons.receipt_long_outlined,
-          'Tagihan setelah diskon',
-        ),
-        _Metric(
-          'Jumlah order',
-          '${summary['count'] ?? 0}',
-          Icons.inventory_2_outlined,
-          'Order masuk pada periode ini',
-        ),
-        _Metric(
-          'Piutang usaha',
-          rp(summary['outstanding_all']),
-          Icons.pending_actions,
-          'Sisa tagihan seluruh periode',
-        ),
-        _Metric(
-          'Diskon',
-          rp(summary['discount']),
-          Icons.local_offer_outlined,
-          'Pada order periode ini',
-        ),
-      ],
     ),
     if (owner && pendingCount > 0) ...[
       const SizedBox(height: 14),
@@ -501,9 +539,15 @@ class _HomePageState extends State<HomePage> {
     const SizedBox(height: 24),
     _SectionTitle(
       title: 'Order terbaru',
-      subtitle: 'Dari periode yang kamu pilih',
+      subtitle: 'Order masuk bulan ini',
       action: TextButton(
-        onPressed: () => selectTab(1),
+        onPressed: () {
+          setState(() {
+            date = jakarta(overviewPeriod.start);
+            kind = 'month';
+          });
+          selectTab(1);
+        },
         child: const Text('Lihat semua'),
       ),
     ),
@@ -542,16 +586,22 @@ class _HomePageState extends State<HomePage> {
     periodPicker(),
     const SizedBox(height: 16),
     _HeroCard(
+      key: const ValueKey('team-wage-detail'),
       label: 'Total ongkos tim',
       value: rp(summary['labor']),
       description: 'Ongkos tercatat untuk seluruh penanggung jawab layanan.',
       icon: Icons.groups_outlined,
-      footer: 'Hak upah tercatat; belum menunjukkan pembayaran gaji.',
+      footer: 'Ketuk untuk melihat rincian customer dan ongkos per nota.',
+      onTap: () => workerDetail(),
     ),
     if (technician) ...[
       const SizedBox(height: 16),
       _Panel(
-        child: _PriceLabel(label: 'Ongkos kerja saya', value: rp(ownWage)),
+        child: InkWell(
+          key: const ValueKey('own-wage-detail'),
+          onTap: () => workerDetail({'id': userId, 'name': name}),
+          child: _PriceLabel(label: 'Ongkos kerja saya', value: rp(ownWage)),
+        ),
       ),
     ],
     const SizedBox(height: 24),
@@ -670,6 +720,17 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.download_outlined),
       label: const Text('Unduh rekap PDF'),
     ),
+    if (owner && kind == 'day' && orders.isNotEmpty) ...[
+      const SizedBox(height: 10),
+      OutlinedButton.icon(
+        onPressed: () => deleteOrders(selected: date),
+        icon: const Icon(Icons.delete_sweep_outlined),
+        label: const Text('Hapus semua order tanggal ini'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+        ),
+      ),
+    ],
     if (technician) ...[
       const SizedBox(height: 12),
       Wrap(
@@ -811,18 +872,34 @@ class _HomePageState extends State<HomePage> {
                               color: PeronaColors.muted,
                             ),
                           ),
+                          Text(
+                            '${dayCounts[day] ?? 0} order',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: PeronaColors.muted,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${dayCounts[day] ?? 0} order',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: PeronaColors.muted,
-                      ),
-                    ),
                     const SizedBox(width: 4),
+                    if (owner)
+                      IconButton(
+                        key: ValueKey('delete-order-day-$day'),
+                        tooltip: 'Hapus semua order tanggal $day $dateLabel',
+                        onPressed:
+                            (dayCounts[day] ?? 0) == 0
+                                ? null
+                                : () => deleteOrders(
+                                  selected: DateTime.utc(
+                                    date.year,
+                                    date.month,
+                                    day,
+                                  ),
+                                ),
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     const Icon(
                       Icons.chevron_right_rounded,
                       color: PeronaColors.muted,
@@ -858,6 +935,8 @@ class _HomePageState extends State<HomePage> {
               order: order,
               workerId: personal ? userId : null,
               onTap: () => detail(order['id'] as String),
+              onDelete:
+                  owner && !preview ? () => deleteOrders(order: order) : null,
             ),
           ),
         )
@@ -1104,70 +1183,77 @@ class _Panel extends StatelessWidget {
 class _HeroCard extends StatelessWidget {
   final String label, value, description, footer;
   final IconData icon;
+  final VoidCallback? onTap;
   const _HeroCard({
+    super.key,
     required this.label,
     required this.value,
     required this.description,
     required this.footer,
     required this.icon,
+    this.onTap,
   });
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: PeronaColors.brandGreen,
-      borderRadius: BorderRadius.circular(22),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget build(BuildContext context) => Material(
+    color: PeronaColors.brandGreen,
+    borderRadius: BorderRadius.circular(22),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: PeronaColors.ink, size: 21),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: PeronaColors.ink,
-                  fontWeight: FontWeight.w600,
+            Row(
+              children: [
+                Icon(icon, color: PeronaColors.ink, size: 21),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: PeronaColors.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              value,
+              style: const TextStyle(
+                color: PeronaColors.ink,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                color: PeronaColors.ink,
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(color: PeronaColors.forest, height: 1),
+            ),
+            Text(
+              footer,
+              style: const TextStyle(
+                color: PeronaColors.ink,
+                fontSize: 12,
+                height: 1.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        Text(
-          value,
-          style: const TextStyle(
-            color: PeronaColors.ink,
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            height: 1.15,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: const TextStyle(
-            color: PeronaColors.ink,
-            fontSize: 12,
-            height: 1.5,
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 14),
-          child: Divider(color: PeronaColors.forest, height: 1),
-        ),
-        Text(
-          footer,
-          style: const TextStyle(
-            color: PeronaColors.ink,
-            fontSize: 12,
-            height: 1.5,
-          ),
-        ),
-      ],
+      ),
     ),
   );
 }
@@ -1175,7 +1261,16 @@ class _HeroCard extends StatelessWidget {
 class _Metric {
   final String label, value, caption;
   final IconData icon;
-  const _Metric(this.label, this.value, this.icon, this.caption);
+  final VoidCallback? onTap;
+  final String? id;
+  const _Metric(
+    this.label,
+    this.value,
+    this.icon,
+    this.caption, {
+    this.onTap,
+    this.id,
+  });
 }
 
 class _MetricGrid extends StatelessWidget {
@@ -1201,41 +1296,67 @@ class _MetricGrid extends StatelessWidget {
                   (metric) => SizedBox(
                     width: width,
                     child: _Panel(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            metric.icon,
-                            color: PeronaColors.forest,
-                            size: 21,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            metric.label,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: PeronaColors.muted,
+                      padding: EdgeInsets.zero,
+                      child: InkWell(
+                        key:
+                            metric.id == null
+                                ? null
+                                : ValueKey('payment-summary-${metric.id}'),
+                        onTap: metric.onTap,
+                        borderRadius: BorderRadius.circular(18),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 124),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      metric.icon,
+                                      color: PeronaColors.forest,
+                                      size: 21,
+                                    ),
+                                    if (metric.onTap != null) ...[
+                                      const Spacer(),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: PeronaColors.muted,
+                                        size: 18,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  metric.label,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: PeronaColors.muted,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  metric.value,
+                                  style: const TextStyle(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  metric.caption,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: PeronaColors.muted,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            metric.value,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            metric.caption,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: PeronaColors.muted,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -1420,7 +1541,13 @@ class _OrderCard extends StatelessWidget {
   final Json order;
   final String? workerId;
   final VoidCallback onTap;
-  const _OrderCard({required this.order, required this.onTap, this.workerId});
+  final VoidCallback? onDelete;
+  const _OrderCard({
+    required this.order,
+    required this.onTap,
+    this.workerId,
+    this.onDelete,
+  });
   @override
   Widget build(BuildContext context) {
     final items =
@@ -1470,6 +1597,14 @@ class _OrderCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onDelete != null)
+                    IconButton(
+                      key: ValueKey('delete-order-${order['id']}'),
+                      onPressed: onDelete,
+                      tooltip: 'Hapus order #${order['number']}',
+                      icon: const Icon(Icons.delete_outline),
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   const Icon(
                     Icons.chevron_right_rounded,
                     color: PeronaColors.muted,

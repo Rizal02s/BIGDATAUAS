@@ -3,7 +3,8 @@ part of 'main.dart';
 class _WorkerDetailPage extends StatefulWidget {
   final Repository repo;
   final Period period;
-  final String workerId, name;
+  final String? workerId;
+  final String name;
   final List<Json> staff, services;
   const _WorkerDetailPage({
     required this.repo,
@@ -91,7 +92,13 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('Ongkos ${widget.name}')),
+    appBar: AppBar(
+      title: Text(
+        widget.workerId == null
+            ? 'Rincian ongkos tim'
+            : 'Ongkos ${widget.name}',
+      ),
+    ),
     body: FutureBuilder<WorkerReport>(
       future: future,
       builder: (context, result) {
@@ -115,6 +122,7 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
           );
         }
         final report = result.data!;
+        final notes = report.notes;
         return RefreshIndicator(
           onRefresh: () async {
             final next = load();
@@ -124,11 +132,13 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
             await next;
           },
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             children: [
               _SectionTitle(
                 title: widget.name,
-                subtitle: '${periodLabel(widget.period)} · WIB',
+                subtitle:
+                    '${DateFormat('dd/MM/yyyy').format(jakarta(widget.period.start))} – ${DateFormat('dd/MM/yyyy').format(jakarta(widget.period.end.subtract(const Duration(seconds: 1))))} · WIB',
               ),
               const SizedBox(height: 16),
               _HeroCard(
@@ -139,12 +149,14 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
                 icon: Icons.account_balance_wallet_outlined,
                 footer: '${report.completed} unit selesai / diambil',
               ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: export,
-                icon: const Icon(Icons.download_outlined),
-                label: const Text('Unduh rincian PDF'),
-              ),
+              if (widget.workerId != null) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: export,
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Unduh rincian PDF'),
+                ),
+              ],
               const SizedBox(height: 16),
               const _Notice(
                 icon: Icons.info_outline,
@@ -153,7 +165,7 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
               ),
               const SizedBox(height: 24),
               const _SectionTitle(
-                title: 'Rincian pekerjaan',
+                title: 'Rincian ongkos per nota',
                 subtitle:
                     'Geser tabel ke samping. Ketuk baris untuk melihat detail order.',
               ),
@@ -162,8 +174,7 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
                 const _EmptyState(
                   icon: Icons.assignment_outlined,
                   title: 'Belum ada pekerjaan',
-                  description:
-                      'Tidak ada layanan pegawai ini dalam periode terpilih.',
+                  description: 'Tidak ada layanan dalam periode terpilih.',
                 ),
               if (report.entries.isNotEmpty)
                 _Panel(
@@ -180,36 +191,46 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
                       columnSpacing: 16,
                       horizontalMargin: 14,
                       columns: const [
-                        DataColumn(label: Text('Tanggal')),
+                        DataColumn(label: Text('No')),
+                        DataColumn(label: Text('Tanggal masuk')),
                         DataColumn(label: Text('Nama customer')),
-                        DataColumn(label: Text('Service layanan')),
-                        DataColumn(label: Text('Jumlah'), numeric: true),
-                        DataColumn(label: Text('Total ongkos'), numeric: true),
+                        DataColumn(label: Text('Jenis order')),
+                        DataColumn(
+                          label: Text('Total ongkos per nota'),
+                          numeric: true,
+                        ),
                       ],
                       rows: [
-                        for (final e in report.entries)
+                        for (var i = 0; i < notes.length; i++)
                           DataRow(
+                            key: ValueKey('wage-note-${notes[i].order['id']}'),
                             onSelectChanged:
-                                (_) => detail(e.order['id'] as String),
+                                (_) => detail(notes[i].order['id'] as String),
                             cells: [
+                              DataCell(cell('${i + 1}', 36)),
                               DataCell(
                                 cell(
-                                  '${DateFormat('dd/MM/yyyy').format(jakarta(DateTime.parse(e.order['created_at'] as String)))}\n#${e.order['number']}',
+                                  DateFormat('dd/MM/yyyy').format(
+                                    jakarta(
+                                      DateTime.parse(
+                                        notes[i].order['created_at'] as String,
+                                      ),
+                                    ),
+                                  ),
                                   92,
                                 ),
                               ),
                               DataCell(
                                 cell(
-                                  e.order['customer_name'] as String,
+                                  '${notes[i].order['customer_name']}\nNota #${notes[i].order['number']}',
                                   120,
                                   bold: true,
                                 ),
                               ),
+                              DataCell(cell(notes[i].services, 180)),
                               DataCell(
-                                cell('${e.item['name']}\n${e.status}', 180),
+                                cell(rp(notes[i].wage), 140, bold: true),
                               ),
-                              DataCell(cell('${e.quantity}', 45)),
-                              DataCell(cell(rp(e.wage), 110, bold: true)),
                             ],
                           ),
                       ],

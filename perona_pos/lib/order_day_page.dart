@@ -69,6 +69,20 @@ class _OrderDayPageState extends State<_OrderDayPage> {
     if (mounted) await load();
   }
 
+  Future<void> deleteOrders([Json? order]) async {
+    if (!widget.owner) return;
+    await _showOrderDeletion(
+      context,
+      widget.repo,
+      date: order == null ? widget.date : null,
+      order: order,
+    );
+    if (mounted) {
+      page = 0;
+      await load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -108,6 +122,17 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                       ),
                     )
                   else ...[
+                    if (widget.owner && (orders.isNotEmpty || page > 0)) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => deleteOrders(),
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        label: const Text('Hapus semua order tanggal ini'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (orders.isEmpty)
                       _EmptyState(
                         icon: Icons.event_note_outlined,
@@ -127,6 +152,8 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                           order: order,
                           workerId: widget.workerId,
                           onTap: () => detail(order['id'] as String),
+                          onDelete:
+                              widget.owner ? () => deleteOrders(order) : null,
                         ),
                       ),
                     if (page > 0 || orders.length == 30)

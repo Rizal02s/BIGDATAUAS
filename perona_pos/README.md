@@ -41,14 +41,43 @@ Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 | Halaman | Fungsi |
 |---|---|
 | Masuk/daftar | Akun email/password; akun baru menunggu aktivasi owner |
-| Rekap | Owner/teknisi: periode harian, bulanan, tahunan; nilai order, pembayaran masuk, diskon, piutang |
-| Ongkos | Owner/teknisi: hak upah tim; ketuk pegawai untuk tabel pekerjaan dan unduh PDF |
+| Ringkasan | Owner/teknisi: empat kartu untuk order bulan berjalan: total order, customer belum lunas, pembayaran QRIS, pembayaran tunai; ketuk kategori pembayaran untuk tabel customer dan keterangan bayar |
+| Ongkos | Owner/teknisi: ketuk total tim, ongkos pribadi, atau nama pegawai untuk rincian per nota: No, tanggal masuk, nama customer, jenis order, total ongkos per nota; unduh PDF per pegawai |
 | Input order | Tanggal/jam order manual (WIB), pelanggan, nomor WA, catatan, layanan, jumlah, penanggung jawab, status, diskon, pembayaran awal Tunai/QRIS/Belum lunas, serta foto kamera/galeri |
 | Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota gambar tanpa ongkos; unduh PNG atau bagikan ke WhatsApp |
 | PDF rekap | Seluruh order periode terpilih dan ringkasan tagihan/piutang; ongkos/gaji hanya untuk owner/teknisi |
 | Layanan | 32 tarif awal; owner dapat tambah, edit, nonaktifkan layanan tanpa dashboard backend |
 | Pegawai | Owner mengaktifkan sebagai admin/teknisi/owner atau menonaktifkan akun terdaftar |
-| Penghapusan | Owner dapat menghapus order dari rekap dengan alasan; jejak audit disimpan |
+| Penghapusan | Owner dapat menghapus satu order atau semua order per tanggal melalui konfirmasi Ya/Tidak; mendukung semua status pembayaran dan menyimpan jejak audit |
+
+Ringkasan memakai seluruh nota yang masuk pada bulan berjalan dalam WIB.
+Kartu belum lunas menghitung customer unik serta sisa tagihan. Kartu QRIS dan
+tunai menampilkan total pembayaran aktif pada nota bulan tersebut, beserta
+jumlah notanya. Nota dengan pembayaran campuran muncul pada kedua kategori,
+sedangkan nominal pada masing-masing kartu hanya menjumlahkan metode terkait.
+Ketuk kategori untuk tabel **No, Tanggal, Nama customer, Keterangan bayar**;
+ketuk baris untuk membuka nota dan memperbarui pembayaran.
+
+Pada tab **Order**, owner dapat menekan ikon hapus di sebelah tanggal dalam
+tampilan Bulanan, atau membuka tanggal lalu memilih **Hapus semua order tanggal
+ini**. Ikon tempat sampah pada kartu menghapus satu order. Dialog menampilkan
+tanggal WIB, jumlah order, dan pilihan **Ya/Tidak** tanpa meminta alasan. Penghapusan per
+tanggal mencakup seluruh halaman order pada hari itu.
+
+Order dapat dihapus baik belum dibayar, dibayar sebagian, maupun sudah lunas.
+Pencatatan pembayaran aktif otomatis dibatalkan saat penghapusan.
+Order, ongkos, piutang, dan pembayaran keluar dari rekap; riwayat
+order/pembayaran serta jejak audit tetap tersimpan. Jika koneksi terputus
+atau versi order berubah di tengah proses, dialog menampilkan jumlah yang sudah
+terkonfirmasi dihapus; tutup dialog untuk memuat data terbaru sebelum mencoba
+lagi. Aplikasi juga mendukung backend lama: jika server meminta koreksi
+pembayaran, aplikasi mengoreksinya lalu menghapus order secara otomatis.
+**[Migrasi 005](supabase/005_simple_order_deletion.sql)** tetap disarankan agar
+koreksi pembayaran dan penghapusan berjalan dalam satu transaksi. Tanpa migrasi
+ini, permintaan berjalan berurutan; kegagalan koneksi atau perubahan oleh pengguna
+lain dapat menghentikan proses setelah sebagian pembayaran dikoreksi. Muat ulang
+dan ulangi penghapusan untuk melanjutkan. Migrasi hanya mengubah fungsi
+penghapusan, tanpa menghapus data saat dijalankan.
 
 **Owner dan teknisi dapat membaca ongkos seluruh tim. Admin tidak dapat membaca ongkos.** Pembatasan admin memerlukan migrasi `003_roles_and_wage_privacy.sql`; API menghapus tarif ongkos dari JSON order/layanan, dan rekap ongkos ditolak. Owner mengelola tarif, akun, penghapusan, dan koreksi pembayaran. Ketiga peran dapat input/edit order, foto, dan pembayaran. Rancangan ini untuk satu usaha/outlet dalam satu proyek Supabase.
 
@@ -79,6 +108,7 @@ Jika dua Deep Clean dikerjakan Pegawai A dan ODS oleh Pegawai B, upah A Rp20.000
 - `supabase/002_seed.sql`: 32 layanan awal; tidak menimpa tarif yang telah diubah owner jika dijalankan ulang.
 - `supabase/003_roles_and_wage_privacy.sql`: migrasi peran admin/teknisi dan pembatasan data ongkos admin; aman untuk proyek yang sudah berjalan.
 - `supabase/004_manual_order_dates.sql`: tanggal order/pembayaran awal manual dan waktu input asli; tetap mendukung APK lama.
+- `supabase/005_simple_order_deletion.sql`: konfirmasi hapus sederhana dengan pembatalan pencatatan pembayaran otomatis dalam satu transaksi.
 - `data/price_list.csv` dan `data/services.json`: transkripsi harga.
 - `test/domain_test.dart`: tes domain untuk `flutter test`.
 - `scripts/domain_checks.dart`: tes domain Dart mandiri yang telah dijalankan.
@@ -118,7 +148,7 @@ Jika menjalankan `flutter create` manual, simpan salinan kode terlebih dahulu da
 
 1. Buat akun dan proyek **Free** di [Supabase](https://supabase.com/), pilih region dekat pengguna jika tersedia. Simpan password database di tempat pribadi.
 2. Di SQL Editor, jalankan seluruh `supabase/001_schema.sql` **sekali, pada proyek baru**. Jangan jalankan pada database usaha lain atau mengulang migrasi awal yang sudah berhasil.
-3. Jalankan `supabase/002_seed.sql` untuk mengisi price list, lalu `supabase/003_roles_and_wage_privacy.sql` untuk hak akses admin/teknisi, dan `supabase/004_manual_order_dates.sql` untuk tanggal manual. Untuk proyek yang sudah menjalankan 001–003, cukup jalankan 004.
+3. Jalankan `supabase/002_seed.sql` untuk mengisi price list, lalu `supabase/003_roles_and_wage_privacy.sql` untuk hak akses admin/teknisi, `supabase/004_manual_order_dates.sql` untuk tanggal manual, dan `supabase/005_simple_order_deletion.sql` untuk penghapusan sederhana. Untuk proyek yang sudah menjalankan 001–004, cukup jalankan 005.
 4. Untuk pilot internal tanpa layanan email, atur Authentication → Email agar konfirmasi email tidak diwajibkan. Akun tetap menunggu persetujuan owner di aplikasi. Jika menggunakan konfirmasi email, siapkan SMTP dan URL konfirmasinya lebih dahulu.
 5. Ambil **Project URL** dan **publishable key / anon key** dari pengaturan API/Connect proyek. Nama menu dashboard bisa berubah.
 6. Salin `config.example.json` menjadi `config.json` dan isi dua nilai tersebut.
@@ -173,8 +203,8 @@ Pegawai berikutnya cukup mendaftar dari aplikasinya, kemudian owner memilih **Pe
 - Coba edit order yang sama dari dua HP: versi lama harus ditolak, lalu buka ulang detail.
 - Foto barang dari kamera dan galeri, tutup/buka aplikasi dan pastikan foto masih bisa dibaca akun aktif.
 - Coba akun pending/nonaktif: akses server harus ditolak.
-- Uji hapus order tanpa pembayaran; periksa rekap dan audit.
-- Untuk salah input pembayaran, owner koreksi pembayaran dengan alasan sebelum koreksi/hapus order.
+- Uji hapus order belum dibayar, dibayar sebagian, dan lunas dengan konfirmasi Ya/Tidak; periksa rekap dan audit.
+- Koreksi pembayaran terpisah tetap memerlukan alasan; saat menghapus order, pencatatan pembayaran aktif dibatalkan otomatis.
 - Cek tampilan pada layar kecil, keyboard, login ulang, dan koneksi terputus.
 
 Jangan membatalkan pembayaran untuk mencatat refund nyata. Fitur refund dan settlement gaji belum tersedia.
