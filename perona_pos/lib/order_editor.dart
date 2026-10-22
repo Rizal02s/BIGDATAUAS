@@ -355,7 +355,7 @@ class _OrderEditorState extends State<OrderEditor> {
                             '1. Data pelanggan',
                             style: TextStyle(
                               fontSize: 17,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -424,7 +424,7 @@ class _OrderEditorState extends State<OrderEditor> {
                             '2. Layanan',
                             style: TextStyle(
                               fontSize: 17,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -486,7 +486,7 @@ class _OrderEditorState extends State<OrderEditor> {
                   children: [
                     const Text(
                       'Ringkasan tagihan',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -495,7 +495,7 @@ class _OrderEditorState extends State<OrderEditor> {
                           : rp(total.revenue),
                       style: const TextStyle(
                         fontSize: 30,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: PeronaColors.forest,
                       ),
                     ),
@@ -562,7 +562,7 @@ class _OrderEditorState extends State<OrderEditor> {
       children: [
         const Text(
           '3. Pembayaran awal',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         const Text(
@@ -614,7 +614,7 @@ class _OrderEditorState extends State<OrderEditor> {
       children: [
         const Text(
           'Foto barang',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         const Text(
@@ -729,7 +729,7 @@ class _OrderEditorState extends State<OrderEditor> {
                     children: [
                       Text(
                         item['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
                       Text(

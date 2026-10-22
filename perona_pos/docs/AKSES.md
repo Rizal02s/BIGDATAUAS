@@ -16,11 +16,16 @@ peran. Lihat [PDF.md](PDF.md) untuk cara unduh dan bagikan.
 | Mengaktifkan akun/mengubah peran | Ya | Tidak | Tidak |
 | Menghapus order/koreksi pembayaran | Ya | Tidak | Tidak |
 | Membaca audit melalui database/API | Ya | Tidak | Tidak |
+| Kas harian dan tutup kas pertama (migrasi 007) | Ya | Ya | Tidak |
+| Memperbarui tutup kas tersimpan | Ya | Tidak | Tidak |
+| Melihat saldo dan riwayat pembayaran ongkos (008) | Ya | Tidak | Ya |
+| Mencatat/koreksi pembayaran ongkos | Ya | Tidak | Tidak |
 
 Ongkos pegawai ditampilkan di tab **Ongkos**, terpisah dari Ringkasan.
 Owner dan teknisi melihat ongkos tim dan rincian per pegawai. Teknisi juga
 melihat jumlah ongkos pribadinya. Ini hak upah yang tercatat pada tanggal order
-masuk, belum buku pembayaran gaji. Admin memiliki Beranda dan Order saja.
+masuk. Pencatatan pembayaran ongkos tersedia melalui migrasi 008 dan menu
+Pembayaran ongkos; gaji pokok/bonus belum tersedia. Admin memiliki Beranda dan Order saja.
 Form, pemilih layanan, dan detail admin hanya menampilkan harga pelanggan.
 Penanggung jawab layanan dipilih dari teknisi atau owner; admin bukan penerima
 ongkos teknisi. Role `staff` lama tetap aktif dan ditampilkan sebagai Teknisi.

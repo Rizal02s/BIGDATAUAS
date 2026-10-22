@@ -150,6 +150,11 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Andi Pratama')),
+      alignment: 0.4,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Andi Pratama'));
     await tester.pumpAndSettle();
     expect(find.text('Detail order'), findsOneWidget);

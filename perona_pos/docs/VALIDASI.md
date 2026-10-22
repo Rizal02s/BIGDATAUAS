@@ -1,5 +1,28 @@
 # Hasil verifikasi
 
+**Pembayaran ongkos, 23 Oktober 2026:** 54 tes Flutter terkait pembayaran
+ongkos, repository, rincian per nota/PDF, Ringkasan, kas harian, dan akses peran
+lulus. Analisis kode yang berubah tanpa temuan. Total 236 pemeriksaan
+PostgreSQL lokal + RLS/RPC lulus, termasuk migrasi 008, alokasi FIFO per
+pegawai/nota, pembayaran parsial lintas periode, idempotensi, koreksi,
+perubahan/penugasan ulang nota, lebih dari 1.000 nota, dan penanda perubahan
+kas untuk pembayaran ongkos Tunai tanpa membocorkan data ongkos ke admin.
+Preview ringkasan, rincian, dan form pembayaran diperiksa. Tes memakai data
+tiruan/PostgreSQL lokal, bukan pembayaran atau migrasi pada database usaha.
+Migrasi 008 masih perlu dijalankan setelah 007 melalui SQL Editor Supabase.
+Panduan: [pembayaran ongkos](PEMBAYARAN_ONGKOS.md).
+
+**Kas harian dan tutup kas, 23 Oktober 2026:** 45 tes Flutter terkait kas,
+repository, Ringkasan, kategori pembayaran, pelanggan, dan akses admin lulus.
+Analisis kode yang berubah tanpa temuan. Total 189 pemeriksaan PostgreSQL
+lokal + RLS/RPC lulus, termasuk migrasi 007, laporan pembayaran lintas tanggal,
+batas WIB, lebih dari 1.000 pembayaran, penutupan berulang yang idempoten,
+konflik data/perangkat, pembatasan owner/admin, dan pelestarian audit/riwayat.
+Preview kas dan form penutupan diperiksa; layar 320 px dengan teks 150% diuji.
+SQL diuji dengan PGlite lokal, bukan database usaha online. Migrasi 007 masih
+perlu dijalankan melalui SQL Editor sebelum fitur digunakan pada Supabase.
+Panduan: [kas harian](KAS_HARIAN.md).
+
 **Tanggal order manual, 6 Oktober 2026 (`0.1.4+5`):** 65 tes Flutter lulus,
 `flutter analyze lib test tool` tanpa temuan, dan 82 pemeriksaan PostgreSQL
 lokal + RLS/RPC lulus. Tes mencakup memilih 3 Oktober pada form, jam manual,

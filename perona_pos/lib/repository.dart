@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'domain.dart';
+import 'cash_data.dart';
+import 'wage_payments.dart';
 
 class Repository {
   final SupabaseClient db;
   Repository(this.db);
   String accessRole = 'pending';
   bool get isAdmin => accessRole == 'admin';
+  bool get canManageCash => ['owner', 'admin'].contains(accessRole);
   bool get canViewWages =>
       ['owner', 'staff', 'technician'].contains(accessRole);
   String get userId => db.auth.currentUser!.id;
@@ -15,6 +19,120 @@ class Repository {
     final result = await db.from('profiles').select().eq('id', userId).single();
     accessRole = result['role'] as String;
     return result;
+  }
+
+  Future<CashDay> cashDay(DateTime date) async {
+    if (!canManageCash) {
+      throw StateError('Kas harian hanya untuk owner dan admin.');
+    }
+    return CashDay.fromJson(
+      Json.from(
+        await db.rpc('cash_day', params: {'p_date': cashDate(date)}) as Map,
+      ),
+    );
+  }
+
+  Future<List<Json>> wageOverview(Period period) async {
+    if (!canViewWages) {
+      throw StateError('Akses pembayaran ongkos tidak tersedia.');
+    }
+    final result = await db.rpc(
+      'wage_overview',
+      params: {
+        'p_start': period.start.toIso8601String(),
+        'p_end': period.end.toIso8601String(),
+      },
+    );
+    return (result as List).map((row) => Json.from(row as Map)).toList();
+  }
+
+  Future<WageLedger> wageLedger(String workerId, Period period) async {
+    if (!canViewWages) {
+      throw StateError('Akses pembayaran ongkos tidak tersedia.');
+    }
+    return WageLedger.fromJson(
+      Json.from(
+        await db.rpc(
+              'wage_ledger',
+              params: {
+                'p_worker': workerId,
+                'p_start': period.start.toIso8601String(),
+                'p_end': period.end.toIso8601String(),
+              },
+            )
+            as Map,
+      ),
+    );
+  }
+
+  Future<Json> payWages({
+    required String id,
+    required WageLedger ledger,
+    required Period period,
+    required int amount,
+    required String method,
+    DateTime? paidAt,
+    required String notes,
+  }) async {
+    if (accessRole != 'owner') {
+      throw StateError('Hanya owner yang dapat mencatat pembayaran ongkos.');
+    }
+    return Json.from(
+      await db.rpc(
+            'pay_wages',
+            params: {
+              'p_id': id,
+              'p_worker': ledger.workerId,
+              'p_start': period.start.toIso8601String(),
+              'p_end': period.end.toIso8601String(),
+              'p_fingerprint': ledger.fingerprint,
+              'p_amount': amount,
+              'p_method': method,
+              'p_paid_at': paidAt?.toUtc().toIso8601String(),
+              'p_notes': notes.trim(),
+            },
+          )
+          as Map,
+    );
+  }
+
+  Future<void> voidWagePayout(String id, String reason) async {
+    if (accessRole != 'owner') {
+      throw StateError('Hanya owner yang dapat mengoreksi pembayaran ongkos.');
+    }
+    await db.rpc(
+      'void_wage_payout',
+      params: {'p_id': id, 'p_reason': reason.trim()},
+    );
+  }
+
+  Future<Json> closeCash({
+    required String id,
+    required CashDay day,
+    required int opening,
+    required int cashOut,
+    required int counted,
+    required String notes,
+  }) async {
+    if (!canManageCash) {
+      throw StateError('Tutup kas hanya untuk owner dan admin.');
+    }
+    return Json.from(
+      await db.rpc(
+            'save_cash_closing',
+            params: {
+              'p_id': id,
+              'p_date': cashDate(day.date),
+              'p_previous_id': day.closing?['id'],
+              'p_fingerprint': day.fingerprint,
+              'p_opening': opening,
+              'p_cash_out': cashOut,
+              'p_counted': counted,
+              'p_notes': notes.trim(),
+            },
+          )
+          as Map,
+    );
   }
 
   Future<List<Json>> _all(String table, String order) async {
@@ -58,9 +176,14 @@ class Repository {
         .gte('created_at', period.start.toIso8601String())
         .lt('created_at', period.end.toIso8601String());
     if (workerId != null) {
-      query = query.contains('items', [
-        {'worker_id': workerId},
-      ]);
+      // A Dart List is encoded as a PostgreSQL array by contains(). The items
+      // column is JSONB, so send the JSON array as an encoded string instead.
+      query = query.contains(
+        'items',
+        jsonEncode([
+          {'worker_id': workerId},
+        ]),
+      );
     }
     return await query
         .order('created_at', ascending: false)
@@ -131,9 +254,12 @@ class Repository {
           .gte('created_at', period.start.toIso8601String())
           .lt('created_at', period.end.toIso8601String());
       if (workerId != null) {
-        query = query.contains('items', [
-          {'worker_id': workerId},
-        ]);
+        query = query.contains(
+          'items',
+          jsonEncode([
+            {'worker_id': workerId},
+          ]),
+        );
       }
       final rows = await query
           .order('created_at')

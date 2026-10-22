@@ -19,6 +19,19 @@ class Period {
   final DateTime start;
   final DateTime end;
   const Period(this.start, this.end);
+
+  /// Calendar dates in WIB; both selected dates are included.
+  factory Period.betweenDates(DateTime first, DateTime last) {
+    final start = DateTime.utc(first.year, first.month, first.day);
+    final end = DateTime.utc(last.year, last.month, last.day);
+    if (end.isBefore(start)) {
+      throw ArgumentError('Tanggal akhir harus setelah tanggal mulai.');
+    }
+    return Period(
+      start.subtract(const Duration(hours: 7)),
+      end.add(const Duration(days: 1)).subtract(const Duration(hours: 7)),
+    );
+  }
   factory Period.forDate(DateTime date, String kind) {
     DateTime local(int y, int m, int d) =>
         DateTime.utc(y, m, d).subtract(const Duration(hours: 7));

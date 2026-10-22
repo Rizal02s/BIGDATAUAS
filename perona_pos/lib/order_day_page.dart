@@ -24,12 +24,57 @@ class _OrderDayPageState extends State<_OrderDayPage> {
   int page = 0, request = 0;
   bool busy = true;
   String? failure;
+  final search = TextEditingController();
+  OrderFilter filter = const OrderFilter();
 
   @override
   void initState() {
     super.initState();
     load();
   }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  void resetFilters() {
+    search.clear();
+    setState(() => filter = const OrderFilter());
+  }
+
+  List<Widget> cards(List<Json> rows) => [
+    for (final order in rows)
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _OrderCard(
+          order: order,
+          workerId: widget.workerId,
+          onTap: () => detail(order['id'] as String),
+          onWorkStatus: () async {
+            await _showOrderQuickAction(
+              context,
+              widget.repo,
+              order['id'] as String,
+              payment: false,
+              workerId: widget.workerId,
+            );
+            if (mounted) await load();
+          },
+          onPayment: () async {
+            await _showOrderQuickAction(
+              context,
+              widget.repo,
+              order['id'] as String,
+              payment: true,
+            );
+            if (mounted) await load();
+          },
+          onDelete: widget.owner ? () => deleteOrders(order) : null,
+        ),
+      ),
+  ];
 
   Future<void> load() async {
     final token = ++request;
@@ -111,6 +156,13 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                     style: const TextStyle(color: PeronaColors.muted),
                   ),
                   const SizedBox(height: 16),
+                  _OrderFilterControls(
+                    controller: search,
+                    filter: filter,
+                    onChanged: (value) => setState(() => filter = value),
+                    onReset: resetFilters,
+                  ),
+                  const SizedBox(height: 16),
                   if (failure != null)
                     _EmptyState(
                       icon: Icons.wifi_off_rounded,
@@ -120,6 +172,17 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                         onPressed: load,
                         child: const Text('Coba lagi'),
                       ),
+                    )
+                  else if (filter.active)
+                    _OrderFilteredResults(
+                      key: const ValueKey('filtered-orders'),
+                      repo: widget.repo,
+                      period: Period.forDate(widget.date, 'day'),
+                      workerId: widget.workerId,
+                      filter: filter,
+                      revision: request,
+                      onReset: resetFilters,
+                      cards: cards,
                     )
                   else ...[
                     if (widget.owner && (orders.isNotEmpty || page > 0)) ...[
@@ -145,36 +208,7 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                                 ? 'Kembali untuk memilih tanggal lainnya.'
                                 : 'Tidak ada layanan yang ditugaskan kepadamu pada halaman ini.',
                       ),
-                    for (final order in orders)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _OrderCard(
-                          order: order,
-                          workerId: widget.workerId,
-                          onTap: () => detail(order['id'] as String),
-                          onWorkStatus: () async {
-                            await _showOrderQuickAction(
-                              context,
-                              widget.repo,
-                              order['id'] as String,
-                              payment: false,
-                              workerId: widget.workerId,
-                            );
-                            if (mounted) await load();
-                          },
-                          onPayment: () async {
-                            await _showOrderQuickAction(
-                              context,
-                              widget.repo,
-                              order['id'] as String,
-                              payment: true,
-                            );
-                            if (mounted) await load();
-                          },
-                          onDelete:
-                              widget.owner ? () => deleteOrders(order) : null,
-                        ),
-                      ),
+                    ...cards(orders),
                     if (page > 0 || orders.length == 30)
                       _Panel(
                         padding: const EdgeInsets.all(8),

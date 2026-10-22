@@ -274,8 +274,19 @@ void main() {
         (w) =>
             w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
       );
-      await tester.drag(horizontal, const Offset(-700, 0));
+      await Scrollable.ensureVisible(tester.element(horizontal), alignment: 0);
       await tester.pumpAndSettle();
+      await tester.dragFrom(
+        tester.getTopLeft(horizontal) + const Offset(100, 40),
+        const Offset(-300, 0),
+      );
+      await tester.pumpAndSettle();
+      final horizontalState = tester.state<ScrollableState>(
+        find
+            .descendant(of: horizontal, matching: find.byType(Scrollable))
+            .first,
+      );
+      expect(horizontalState.position.pixels, greaterThan(0));
       expect(tester.takeException(), isNull);
     },
   );

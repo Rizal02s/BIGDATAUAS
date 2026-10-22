@@ -36,6 +36,25 @@ belum dilakukan.
 
 ## Fitur yang ada dalam kode
 
+**Pembayaran ongkos pegawai** tersedia melalui Ongkos → Pembayaran ongkos.
+Owner mencatat pembayaran sebagian/lunas, metode, waktu bayar, serta koreksi
+dengan alasan. Teknisi dapat melihat riwayat. Alokasi per pegawai/nota mencegah
+pembayaran ulang saat berganti periode. Terapkan
+[`008_wage_payments.sql`](supabase/008_wage_payments.sql) setelah 007.
+Panduan: [pembayaran ongkos](docs/PEMBAYARAN_ONGKOS.md).
+
+**Kas harian & tutup kas** tersedia untuk owner/admin melalui Ringkasan atau
+Beranda. Laporan mengikuti tanggal pembayaran diterima dalam WIB, termasuk
+pelunasan nota lama, dengan pemisahan Tunai/QRIS/Transfer dan pencocokan uang
+fisik. Terapkan [`007_daily_cash.sql`](supabase/007_daily_cash.sql) setelah 006
+sebelum menggunakan fitur ini. Panduan: [kas harian](docs/KAS_HARIAN.md).
+
+Tab **Order** mendukung pencarian nama pelanggan, nomor WhatsApp, dan nomor
+nota, serta kombinasi filter status pengerjaan/pembayaran. Pencarian mencakup
+seluruh halaman data dalam periode terpilih dan juga tersedia pada rincian
+per tanggal. Lihat [panduan pencarian order](docs/PENCARIAN_ORDER.md).
+Tidak memerlukan migrasi Supabase baru.
+
 **Home sesuai peran:** owner mendapat ringkasan usaha dan pengelolaan tim;
 teknisi mendapat ringkasan usaha dan ongkos seluruh tim; admin hanya operasional
 order tanpa akses ongkos. Ongkos dipindahkan ke halaman sendiri.
@@ -212,7 +231,8 @@ Pegawai berikutnya cukup mendaftar dari aplikasinya, kemudian owner memilih **Pe
 - Koreksi pembayaran terpisah tetap memerlukan alasan; saat menghapus order, pencatatan pembayaran aktif dibatalkan otomatis.
 - Cek tampilan pada layar kecil, keyboard, login ulang, dan koneksi terputus.
 
-Jangan membatalkan pembayaran untuk mencatat refund nyata. Fitur refund dan settlement gaji belum tersedia.
+Jangan membatalkan pembayaran untuk mencatat refund nyata. Pembayaran ongkos
+per nota tersedia melalui migrasi 008; fitur refund nyata belum tersedia.
 
 ## 5. Build dan bagikan APK online
 
@@ -246,7 +266,10 @@ Sumber utama: [Supabase pricing](https://supabase.com/pricing), [project pausing
 
 ## Batas MVP yang perlu diketahui
 
-- Ongkos adalah **hak upah tercatat**, belum buku pembayaran gaji. Belum ada status upah sudah dibayar, gaji pokok, bonus, atau penguncian periode gaji. Koreksi order mengubah rekap pada periode tanggal order aslinya.
+- Ongkos adalah **hak upah tercatat**. Pembayaran sebagian/lunas dan riwayatnya
+  tersedia melalui migrasi 008. Gaji pokok, bonus, dan penguncian periode belum
+  tersedia. Koreksi order mengubah hak pada periode tanggal order aslinya;
+  kelebihan yang sudah dibayar ditandai untuk diperiksa.
 - Satu item diberikan kepada satu pegawai. Jika jumlah unit dibagi antara pegawai, masukkan baris layanan terpisah. Pembagian ongkos satu pekerjaan ke beberapa pegawai belum tersedia.
 - Tidak ada refund sungguhan, pembayaran mundur tanggal, customer database tersendiri, export/nota PDF, printer Bluetooth, atau multi-outlet.
 - Foto yang sudah terhubung belum bisa diganti/hapus lewat UI. Cleanup objek gagal unggah yang belum terhubung hanya diizinkan untuk pemiliknya.

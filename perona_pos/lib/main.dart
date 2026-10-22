@@ -9,6 +9,10 @@ import 'repository.dart';
 import 'app_theme.dart';
 import 'order_submission.dart';
 import 'report_data.dart';
+import 'customer_insights.dart';
+import 'order_filters.dart';
+import 'cash_data.dart';
+import 'wage_payments.dart';
 import 'pdf_documents.dart';
 import 'pdf_export.dart';
 import 'receipt_export.dart';
@@ -20,6 +24,10 @@ part 'order_day_page.dart';
 part 'order_deletion.dart';
 part 'worker_detail_page.dart';
 part 'payment_detail_page.dart';
+part 'customer_pages.dart';
+part 'order_search.dart';
+part 'cash_page.dart';
+part 'wage_payment_page.dart';
 
 final rupiah = NumberFormat.currency(
   locale: 'id_ID',
@@ -35,6 +43,22 @@ String errorText(Object error) {
     return 'Tarif berubah. Tagihan tersimpan ${rp(error.total)}. Buka detail order untuk memeriksa dan mencatat pembayaran yang benar.';
   }
   if (error is PostgrestException) {
+    if ((error.code == 'PGRST202' || error.code == '42P01') &&
+        [
+          'wage_overview',
+          'wage_ledger',
+          'wage_payouts',
+          'pay_wages',
+          'void_wage_payout',
+        ].any(error.message.contains)) {
+      return 'Pembayaran ongkos belum aktif di Supabase. Jalankan pembaruan 008_wage_payments.sql terlebih dahulu.';
+    }
+    if ((error.code == 'PGRST202' || error.code == '42P01') &&
+        (error.message.contains('cash_day') ||
+            error.message.contains('cash_closings') ||
+            error.message.contains('save_cash_closing'))) {
+      return 'Kas harian belum aktif di Supabase. Jalankan pembaruan 007_daily_cash.sql terlebih dahulu.';
+    }
     if (error.code == 'PGRST202' &&
         error.message.contains('update_order_statuses')) {
       return 'Fitur status cepat belum aktif di Supabase. Jalankan pembaruan 006_quick_order_status.sql terlebih dahulu.';

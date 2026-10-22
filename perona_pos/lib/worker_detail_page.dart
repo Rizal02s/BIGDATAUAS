@@ -156,6 +156,25 @@ class _WorkerDetailPageState extends State<_WorkerDetailPage> {
                   icon: const Icon(Icons.download_outlined),
                   label: const Text('Unduh rincian PDF'),
                 ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const ValueKey('worker-wage-payments'),
+                  onPressed:
+                      () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder:
+                              (_) => _WageLedgerPage(
+                                repo: widget.repo,
+                                workerId: widget.workerId!,
+                                period: widget.period,
+                                services: widget.services,
+                                staff: widget.staff,
+                              ),
+                        ),
+                      ),
+                  icon: const Icon(Icons.payments_outlined),
+                  label: const Text('Pembayaran ongkos'),
+                ),
               ],
               const SizedBox(height: 16),
               const _Notice(

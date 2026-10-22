@@ -14,10 +14,13 @@ class _HomePageState extends State<HomePage> {
   Json summary = {};
   PaymentOverview? overview;
   Period overviewPeriod = Period.forDate(jakarta(DateTime.now()), 'month');
+  Period customerPeriod = Period.forDate(jakarta(DateTime.now()), 'month');
   Map<int, int> dayCounts = {};
   DateTime date = jakarta(DateTime.now());
   String kind = 'day', catalogQuery = '';
   final catalogSearch = TextEditingController();
+  final orderSearch = TextEditingController();
+  OrderFilter orderFilter = const OrderFilter();
   int tab = 0, page = 0, request = 0;
   bool busy = true, mineOnly = true;
   String? failure;
@@ -44,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     catalogSearch.dispose();
+    orderSearch.dispose();
     super.dispose();
   }
 
@@ -176,6 +180,22 @@ class _HomePageState extends State<HomePage> {
     if (mounted) await load();
   }
 
+  Future<void> wagePayments() async {
+    if (!widget.repo.canViewWages) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => WagePaymentsPage(
+              repo: widget.repo,
+              initialPeriod: period,
+              services: services,
+              staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
   Future<void> paymentDetail(PaymentCategory category) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -187,6 +207,55 @@ class _HomePageState extends State<HomePage> {
               owner: owner,
               services: services,
               staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Future<void> customerHistory(CustomerVisits customer, Period selected) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => _CustomerHistoryPage(
+              repo: widget.repo,
+              customer: customer,
+              period: selected,
+              owner: owner,
+              services: services,
+              staff: staff,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Future<void> dailyCash() async {
+    if (!widget.repo.canManageCash) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) =>
+                CashPage(repo: widget.repo, services: services, staff: staff),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Future<void> allCustomers(CustomerRanking ranking) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => Scaffold(
+              appBar: AppBar(title: const Text('Peringkat pelanggan')),
+              body: _CustomerRankingPanel(
+                repo: widget.repo,
+                initialPeriod: ranking.period,
+                seed: ranking,
+                compact: false,
+                onPeriodChanged: (value) => customerPeriod = value,
+                onCustomer: customerHistory,
+              ),
             ),
       ),
     );
@@ -424,7 +493,7 @@ class _HomePageState extends State<HomePage> {
           'Halo, $name',
           style: const TextStyle(
             fontSize: 25,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             height: 1.25,
           ),
         ),
@@ -527,6 +596,15 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.add_rounded),
       label: const Text('Buat order baru'),
     ),
+    if (owner) ...[
+      const SizedBox(height: 10),
+      OutlinedButton.icon(
+        key: const ValueKey('open-daily-cash'),
+        onPressed: dailyCash,
+        icon: const Icon(Icons.point_of_sale_outlined),
+        label: const Text('Kas harian'),
+      ),
+    ],
     if (owner && pendingCount > 0) ...[
       const SizedBox(height: 14),
       _Notice(
@@ -536,6 +614,21 @@ class _HomePageState extends State<HomePage> {
         onTap: () => selectTab(4),
       ),
     ],
+    const SizedBox(height: 24),
+    _Panel(
+      child: _CustomerRankingPanel(
+        repo: widget.repo,
+        initialPeriod: customerPeriod,
+        seed:
+            customerPeriod.start == overviewPeriod.start &&
+                    customerPeriod.end == overviewPeriod.end
+                ? CustomerRanking(overview?.orders ?? [], customerPeriod)
+                : null,
+        onPeriodChanged: (value) => customerPeriod = value,
+        onCustomer: customerHistory,
+        onShowAll: allCustomers,
+      ),
+    ),
     const SizedBox(height: 24),
     _SectionTitle(
       title: 'Order terbaru',
@@ -564,6 +657,13 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.add),
       label: const Text('Input order pelanggan'),
     ),
+    const SizedBox(height: 10),
+    OutlinedButton.icon(
+      key: const ValueKey('open-daily-cash'),
+      onPressed: dailyCash,
+      icon: const Icon(Icons.point_of_sale_outlined),
+      label: const Text('Kas harian'),
+    ),
     const SizedBox(height: 20),
     _SectionTitle(
       title: 'Order terbaru',
@@ -584,6 +684,13 @@ class _HomePageState extends State<HomePage> {
     ),
     const SizedBox(height: 20),
     periodPicker(),
+    const SizedBox(height: 12),
+    OutlinedButton.icon(
+      key: const ValueKey('open-wage-payments'),
+      onPressed: wagePayments,
+      icon: const Icon(Icons.payments_outlined),
+      label: const Text('Pembayaran ongkos'),
+    ),
     const SizedBox(height: 16),
     _HeroCard(
       key: const ValueKey('team-wage-detail'),
@@ -623,7 +730,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 8),
           Text(
             rp(money(summary['revenue']) - money(summary['labor'])),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -675,7 +782,7 @@ class _HomePageState extends State<HomePage> {
                       child: Text(
                         rp(wages[i]['amount']),
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -709,6 +816,16 @@ class _HomePageState extends State<HomePage> {
     const SizedBox(height: 20),
     periodPicker(),
     const SizedBox(height: 16),
+    _OrderFilterControls(
+      controller: orderSearch,
+      filter: orderFilter,
+      onChanged: (value) => setState(() => orderFilter = value),
+      onReset: () {
+        orderSearch.clear();
+        setState(() => orderFilter = const OrderFilter());
+      },
+    ),
+    const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: () => editor(),
       icon: const Icon(Icons.add),
@@ -720,7 +837,7 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.download_outlined),
       label: const Text('Unduh rekap PDF'),
     ),
-    if (owner && kind == 'day' && orders.isNotEmpty) ...[
+    if (owner && kind == 'day' && orders.isNotEmpty && !orderFilter.active) ...[
       const SizedBox(height: 10),
       OutlinedButton.icon(
         onPressed: () => deleteOrders(selected: date),
@@ -762,7 +879,22 @@ class _HomePageState extends State<HomePage> {
       ),
     ],
     const SizedBox(height: 20),
-    if (kind == 'month')
+    if (orderFilter.active)
+      _OrderFilteredResults(
+        key: const ValueKey('filtered-orders'),
+        repo: widget.repo,
+        period: period,
+        workerId: technician && mineOnly ? userId : null,
+        filter: orderFilter,
+        revision: request,
+        onReset: () {
+          orderSearch.clear();
+          setState(() => orderFilter = const OrderFilter());
+        },
+        cards:
+            (rows) => orderCards(rows: rows, personal: technician && mineOnly),
+      )
+    else if (kind == 'month')
       ...dateCards()
     else ...[
       ...orderCards(personal: technician && mineOnly),
@@ -846,7 +978,7 @@ class _HomePageState extends State<HomePage> {
                         '$day'.padLeft(2, '0'),
                         style: const TextStyle(
                           fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: PeronaColors.forest,
                         ),
                       ),
@@ -913,8 +1045,13 @@ class _HomePageState extends State<HomePage> {
     ];
   }
 
-  List<Widget> orderCards({bool preview = false, bool personal = false}) {
-    if (orders.isEmpty) {
+  List<Widget> orderCards({
+    bool preview = false,
+    bool personal = false,
+    List<Json>? rows,
+  }) {
+    final source = rows ?? orders;
+    if (source.isEmpty) {
       return [
         _EmptyState(
           icon: Icons.inventory_2_outlined,
@@ -926,7 +1063,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ];
     }
-    final visible = preview ? orders.take(4) : orders;
+    final visible = preview ? source.take(4) : source;
     return visible
         .map(
           (order) => Padding(
@@ -1245,7 +1382,7 @@ class _HeroCard extends StatelessWidget {
               style: const TextStyle(
                 color: PeronaColors.ink,
                 fontSize: 34,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 height: 1.15,
               ),
             ),
@@ -1360,7 +1497,7 @@ class _MetricGrid extends StatelessWidget {
                                   metric.value,
                                   style: const TextStyle(
                                     fontSize: 21,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -1405,7 +1542,7 @@ class _SectionTitle extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           if (action != null) action!,
         ],
@@ -1532,7 +1669,7 @@ class _Avatar extends StatelessWidget {
     child: Text(
       name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),
       style: const TextStyle(
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
         color: PeronaColors.forest,
       ),
     ),
@@ -1572,30 +1709,8 @@ class _OrderCard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final items =
-        ((order['items'] as List?) ?? [])
-            .where((item) => workerId == null || item['worker_id'] == workerId)
-            .toList();
-    final statuses = items.map((item) => item['status'] as String).toSet();
-    // Mixed progress must not label the entire order as finished. In the
-    // technician's personal view this summarizes only their assigned services.
-    final workStatus =
-        statuses.isEmpty
-            ? 'Belum ada layanan'
-            : statuses.length == 1
-            ? statuses.single
-            : statuses.every(
-              (status) => ['Selesai', 'Diambil'].contains(status),
-            )
-            ? 'Selesai'
-            : 'Dikerjakan';
-    final paid = paidTotal(order);
-    final paymentStatus =
-        paid >= money(order['total'])
-            ? 'Lunas'
-            : paid > 0
-            ? 'DP'
-            : 'Belum bayar';
+    final workStatus = orderWorkStatus(order, workerId: workerId);
+    final paymentStatus = orderPaymentStatus(order);
     return Card(
       key: ValueKey('order-card-${order['id']}'),
       child: InkWell(
@@ -1609,14 +1724,28 @@ class _OrderCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      DateFormat('dd/MM/yyyy').format(
-                        jakarta(DateTime.parse(order['created_at'] as String)),
-                      ),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: PeronaColors.muted,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Nota #${order['number']}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('dd/MM/yyyy').format(
+                            jakarta(
+                              DateTime.parse(order['created_at'] as String),
+                            ),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: PeronaColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (onDelete != null)
@@ -1647,14 +1776,14 @@ class _OrderCard extends StatelessWidget {
                       order['customer_name'] as String,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
                       rp(order['total']),
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: PeronaColors.forest,
                       ),
                     ),

@@ -289,6 +289,11 @@ void main() {
     await pumpHome(tester, repo, 'staff');
     await tester.tap(find.text('Order'));
     await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Semua order')),
+      alignment: 0.4,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Semua order'));
     await tester.pumpAndSettle();
     expect(repo.workerFilters.last, isNull);
