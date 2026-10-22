@@ -15,6 +15,7 @@ import 'receipt_export.dart';
 
 part 'home_page.dart';
 part 'order_editor.dart';
+part 'order_quick_actions.dart';
 part 'order_day_page.dart';
 part 'order_deletion.dart';
 part 'worker_detail_page.dart';
@@ -34,6 +35,10 @@ String errorText(Object error) {
     return 'Tarif berubah. Tagihan tersimpan ${rp(error.total)}. Buka detail order untuk memeriksa dan mencatat pembayaran yang benar.';
   }
   if (error is PostgrestException) {
+    if (error.code == 'PGRST202' &&
+        error.message.contains('update_order_statuses')) {
+      return 'Fitur status cepat belum aktif di Supabase. Jalankan pembaruan 006_quick_order_status.sql terlebih dahulu.';
+    }
     if (error.code == 'PGRST202' &&
         (error.message.contains('save_order_with_date') ||
             error.message.contains('add_payment_with_date'))) {
@@ -752,11 +757,13 @@ class PaymentDialog extends StatefulWidget {
   final Repository repo;
   final String orderId;
   final int remaining;
+  final Json? order;
   const PaymentDialog({
     super.key,
     required this.repo,
     required this.orderId,
     required this.remaining,
+    this.order,
   });
   @override
   State<PaymentDialog> createState() => _PaymentDialogState();
@@ -768,6 +775,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
   final id = const Uuid().v4();
   String method = 'Tunai';
   bool busy = false;
+  int? submittedAmount;
+  String? submittedMethod, failure;
   @override
   void initState() {
     super.initState();
@@ -781,13 +790,23 @@ class _PaymentDialogState extends State<PaymentDialog> {
   }
 
   Future<void> save() async {
-    if (!form.currentState!.validate()) return;
-    setState(() => busy = true);
+    if (busy || !form.currentState!.validate()) return;
+    submittedAmount ??= int.parse(amount.text);
+    submittedMethod ??= method;
+    setState(() {
+      busy = true;
+      failure = null;
+    });
     try {
-      await widget.repo.pay(id, widget.orderId, int.parse(amount.text), method);
+      await widget.repo.pay(
+        id,
+        widget.orderId,
+        submittedAmount!,
+        submittedMethod!,
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) message(context, errorText(e));
+      if (mounted) setState(() => failure = errorText(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -797,48 +816,109 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: AlertDialog(
-      title: const Text('Tambah pembayaran'),
+      title: Text(
+        widget.remaining > 0 ? 'Tambah pembayaran' : 'Pembayaran lunas',
+      ),
+      scrollable: true,
       content: Form(
         key: form,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.order != null) ...[
+              Text(
+                '#${widget.order!['number']} · ${widget.order!['customer_name']}',
+              ),
+              const SizedBox(height: 8),
+              Text('Tagihan ${rp(widget.order!['total'])}'),
+              Text('Sudah dibayar ${rp(paidTotal(widget.order!))}'),
+            ],
             Text('Sisa tagihan ${rp(widget.remaining)}'),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: amount,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(labelText: 'Nominal (rupiah)'),
-              validator: (v) {
-                final n = int.tryParse(v ?? '') ?? 0;
-                return n > 0 && n <= widget.remaining
-                    ? null
-                    : 'Nominal harus 1 sampai ${widget.remaining}.';
-              },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: method,
-              decoration: const InputDecoration(labelText: 'Metode'),
-              items:
-                  ['Tunai', 'Transfer', 'QRIS']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-              onChanged: busy ? null : (v) => setState(() => method = v!),
-            ),
+            if (widget.remaining > 0) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Isi nominal yang diterima, sebagian atau seluruh sisa tagihan. Waktu pembayaran dicatat otomatis saat disimpan (WIB).',
+                style: TextStyle(fontSize: 12, color: PeronaColors.muted),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: amount,
+                enabled: !busy && submittedAmount == null,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Nominal (rupiah)',
+                ),
+                validator: (v) {
+                  final n = int.tryParse(v ?? '') ?? 0;
+                  return n > 0 && n <= widget.remaining
+                      ? null
+                      : 'Nominal harus 1 sampai ${widget.remaining}.';
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: method,
+                decoration: const InputDecoration(labelText: 'Metode'),
+                items:
+                    ['Tunai', 'Transfer', 'QRIS']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                onChanged:
+                    busy || submittedMethod != null
+                        ? null
+                        : (v) => setState(() => method = v!),
+              ),
+            ],
+            if (failure != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                failure!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Coba lagi untuk mengonfirmasi pembayaran yang sama tanpa mencatat dua kali.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+            if (((widget.order?['payments'] as List?) ?? []).isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Riwayat pembayaran',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              for (final payment in widget.order!['payments'] as List)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    '${rp(payment['amount'])} · ${payment['method']}'
+                    '${payment['voided_at'] != null ? ' · Dikoreksi' : ''}'
+                    '\n${stamp(payment['paid_at'])} WIB',
+                    style: const TextStyle(fontSize: 12, height: 1.5),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: busy ? null : () => Navigator.pop(context),
-          child: const Text('Batal'),
+          child: Text(widget.remaining > 0 ? 'Batal' : 'Tutup'),
         ),
-        FilledButton(
-          onPressed: busy ? null : save,
-          child: Text(busy ? 'Menyimpan…' : 'Simpan'),
-        ),
+        if (widget.remaining > 0)
+          FilledButton(
+            onPressed: busy ? null : save,
+            child: Text(
+              busy
+                  ? 'Menyimpan…'
+                  : failure == null
+                  ? 'Simpan'
+                  : 'Coba lagi',
+            ),
+          ),
       ],
     ),
   );

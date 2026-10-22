@@ -266,5 +266,79 @@ for (const amount of [0,15000,45000]) {
  check(['count','revenue','labor','cash','outstanding_all'].map(k=>Number(result[k])),['count','revenue','labor','cash','outstanding_all'].map(k=>Number(base[k])),'Unpaid, partial and full deletions restore all recap totals');
  await fails('select add_payment($1,$2,$3,$4)',[randomUUID(),id,1,'Tunai'],/Order tidak ditemukan/,'A deleted order cannot receive new payments');
 }
+// Quick status updates preserve financial snapshots, check versions, and audit changes.
+await db.exec('reset role');
+const statusMigration = await readFile(new URL('../supabase/006_quick_order_status.sql', import.meta.url), 'utf8');
+await db.exec(statusMigration);
+await db.exec(statusMigration);
+await asUser(admin);
+const quickId = randomUUID();
+const quickItems = [
+ {...adminItem,id:randomUUID(),status:'Masuk'},
+ {...adminItem,id:randomUUID(),status:'Dikerjakan'},
+];
+await db.query(datedSave,[quickId,0,'Quick status customer','','',0,JSON.stringify(quickItems),'2026-10-03T03:15:00Z']);
+const quickDetail = async () => (await db.query('select order_detail($1) data',[quickId])).rows[0].data;
+const quickStatus = 'select update_order_statuses($1,$2,$3)';
+const quickChanges = [{id:quickItems[0].id,status:'Selesai',price:1,labor_fee:1,worker_id:owner}];
+let quickBefore = await quickDetail();
+await db.query(quickStatus,[quickId,quickBefore.version,JSON.stringify(quickChanges)]);
+let quickAfter = await quickDetail();
+check(quickAfter.items.map(i=>i.status),['Selesai','Dikerjakan'],'Admin can update only selected service statuses');
+check(quickAfter.items.every(i=>!('labor_fee' in i)) && !('labor_total' in quickAfter),true,'Quick status API does not expose wages');
+check(quickAfter.items.map(({status,...rest})=>rest),quickBefore.items.map(({status,...rest})=>rest),'Status update ignores attempts to change prices or workers');
+check([Number(quickAfter.total),quickAfter.created_at,quickAfter.recorded_at],[Number(quickBefore.total),quickBefore.created_at,quickBefore.recorded_at],'Status update preserves totals and business/recording dates');
+check(quickAfter.version,quickBefore.version+1,'Status change increments order version');
+await fails(quickStatus,[quickId,quickBefore.version,JSON.stringify(quickChanges)],/Order telah berubah/,'Concurrent stale update cannot overwrite status');
+for (const [changes,pattern] of [
+ [null,/Daftar status/], [{},/Daftar status/], [[],/Pilih 1/],
+ [[{id:quickItems[0].id,status:'Unknown'}],/Status pengerjaan/],
+ [[{id:quickItems[0].id}],/Status pengerjaan/],
+ [[{status:'Selesai'}],/ID layanan/],
+ [[{id:randomUUID(),status:'Selesai'}],/Layanan tidak ditemukan/],
+ [[{id:quickItems[0].id,status:'Selesai'},{id:quickItems[0].id,status:'Masuk'}],/duplikat/],
+ [[{id:quickItems[0].id,status:'Diambil'},{id:quickItems[1].id,status:'Unknown'}],/Status pengerjaan/],
+]) {
+ await fails(quickStatus,[quickId,quickAfter.version,JSON.stringify(changes)],pattern,'Invalid status batch is rejected atomically');
+}
+check((await quickDetail()).items,quickAfter.items,'Rejected batch leaves all service statuses untouched');
+await fails(quickStatus,[quickId,null,JSON.stringify(quickChanges)],/versi order wajib/,'Quick updates require a version');
+await db.query(quickStatus,[quickId,quickAfter.version,JSON.stringify(quickChanges)]);
+check((await quickDetail()).version,quickAfter.version,'No-op updates do not increment version');
+await asUser(owner);
+let quickRaw = (await db.query('select * from orders where id=$1',[quickId])).rows[0];
+check(quickRaw.items.every(i=>Number(i.labor_fee)===15000),true,'Status edit preserves hidden wage snapshots');
+check((await db.query("select count(*)::int n from audit_log where action='order.status' and entity_id=$1",[quickId])).rows[0].n,1,'One audit row stores the successful status change');
+const statusAudit = (await db.query("select * from audit_log where action='order.status' and entity_id=$1",[quickId])).rows[0];
+check([statusAudit.actor,statusAudit.before_data.items[0].status,statusAudit.after_data.items[0].status],[admin,'Masuk','Selesai'],'Status audit records actor, previous and new statuses');
+await asUser(technician);
+await db.query(quickStatus,[quickId,quickAfter.version,JSON.stringify(quickItems.map(i=>({id:i.id,status:'Diambil'})))]);
+quickAfter = await quickDetail();
+check(quickAfter.items.every(i=>i.status==='Diambil'),true,'Technician can update the whole order');
+// Later partial/full payments keep separate receipts and actual payment times.
+await asUser(admin);
+const firstQuickPayment = randomUUID(), lastQuickPayment = randomUUID();
+await db.query('select add_payment($1,$2,$3,$4)',[firstQuickPayment,quickId,30000,'Tunai']);
+await db.query('select add_payment($1,$2,$3,$4)',[firstQuickPayment,quickId,30000,'Tunai']);
+quickAfter = await quickDetail();
+check(quickAfter.payments.filter(p=>!p.voided_at).length,1,'Partial-payment retry keeps a single receipt');
+check(Number(quickAfter.total)-quickAfter.payments.reduce((sum,p)=>sum+Number(p.amount),0),60000,'Partial payment leaves the correct balance');
+await fails(quickStatus,[quickId,quickAfter.version-1,JSON.stringify(quickChanges)],/Order telah berubah/,'New payments invalidate stale status updates');
+await db.query('select add_payment($1,$2,$3,$4)',[lastQuickPayment,quickId,60000,'QRIS']);
+await fails('select add_payment($1,$2,$3,$4)',[randomUUID(),quickId,1,'Tunai'],/melebihi/,'Settled orders reject an extra payment');
+await asUser(owner);
+quickRaw = (await db.query('select * from orders where id=$1',[quickId])).rows[0];
+const quickPayments = (await db.query('select * from payments where order_id=$1',[quickId])).rows;
+check(quickPayments.reduce((sum,p)=>sum+Number(p.amount),0),Number(quickRaw.total),'Later payment settles the order exactly');
+check(quickPayments.every(p=>new Date(p.paid_at)>new Date(quickRaw.created_at) && p.created_by===admin && p.recorded_at!=null),true,'Later receipts store actual time, recording time, and operator');
+check((await db.query("select count(*)::int n from audit_log where action='payment.create' and entity_id=any($1::uuid[])",[[firstQuickPayment,lastQuickPayment]])).rows[0].n,2,'Each receipt has exactly one audit entry');
+await asUser(pending);
+await fails(quickStatus,[quickId,quickRaw.version,JSON.stringify(quickChanges)],/belum aktif/,'Inactive users cannot change statuses');
+await db.exec('reset role; set role anon');
+await fails(quickStatus,[quickId,quickRaw.version,JSON.stringify(quickChanges)],/permission denied/,'Anonymous users cannot change statuses');
+await asUser(owner);
+await db.query('select delete_order($1,$2)',[quickId,quickRaw.version]);
+const deletedQuickVersion = (await db.query('select version from orders where id=$1',[quickId])).rows[0].version;
+await fails(quickStatus,[quickId,deletedQuickVersion,JSON.stringify(quickChanges)],/Order tidak ditemukan/,'Deleted orders cannot change statuses');
 console.log(`PASS: ${checks} pemeriksaan PostgreSQL + RLS/RPC`);
 await db.close();

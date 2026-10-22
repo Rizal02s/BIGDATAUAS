@@ -152,6 +152,25 @@ class _OrderDayPageState extends State<_OrderDayPage> {
                           order: order,
                           workerId: widget.workerId,
                           onTap: () => detail(order['id'] as String),
+                          onWorkStatus: () async {
+                            await _showOrderQuickAction(
+                              context,
+                              widget.repo,
+                              order['id'] as String,
+                              payment: false,
+                              workerId: widget.workerId,
+                            );
+                            if (mounted) await load();
+                          },
+                          onPayment: () async {
+                            await _showOrderQuickAction(
+                              context,
+                              widget.repo,
+                              order['id'] as String,
+                              payment: true,
+                            );
+                            if (mounted) await load();
+                          },
                           onDelete:
                               widget.owner ? () => deleteOrders(order) : null,
                         ),

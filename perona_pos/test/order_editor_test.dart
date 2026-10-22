@@ -83,12 +83,135 @@ Future<void> addService(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Tambah layanan'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Deep Clean'));
+  await tester.tap(find.widgetWithText(ListTile, 'Deep Clean'));
   await tester.pumpAndSettle();
 }
 
 void main() {
   setUpAll(loadPreviewFonts);
+
+  testWidgets(
+    'cart combines repeated services and saves the adjusted quantity',
+    (tester) async {
+      final repo = SubmissionRepository();
+      await openEditor(tester, repo);
+      await tester.enterText(find.byType(TextFormField).first, 'Andi');
+      await addService(tester);
+      expect(find.text('Penanggung jawab layanan'), findsNothing);
+      expect(find.text('Status pengerjaan'), findsNothing);
+      expect(
+        tester
+            .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.remove))
+            .onPressed,
+        isNull,
+      );
+      await addService(tester);
+      expect(find.text('Deep Clean'), findsOneWidget);
+      expect(find.text('Rp60.000'), findsWidgets);
+      await tester.tap(find.byTooltip('Tambah jumlah Deep Clean'));
+      await tester.pumpAndSettle();
+      expect(find.text('Rp90.000'), findsWidgets);
+      await tester.tap(find.byTooltip('Kurangi jumlah Deep Clean'));
+      await tester.pumpAndSettle();
+      expect(find.text('Rp60.000'), findsWidgets);
+      await capture(tester, 'order-services-cart');
+      await tester.scrollUntilVisible(
+        find.text('Simpan order'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Simpan order'));
+      await tester.tap(find.text('Simpan order'));
+      await tester.pumpAndSettle();
+      final savedItems = repo.savedDraft!['items'] as List;
+      expect(savedItems, hasLength(1));
+      expect(savedItems.single['quantity'], 2);
+      expect(savedItems.single['worker_id'], repo.userId);
+      expect(savedItems.single['status'], 'Masuk');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('collapsed service details retain worker and status changes', (
+    tester,
+  ) async {
+    final repo = SubmissionRepository();
+    await openEditor(tester, repo);
+    await tester.enterText(find.byType(TextFormField).first, 'Sinta');
+    await addService(tester);
+    await tester.tap(find.text('Dina · Masuk'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Penanggung jawab layanan'));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bagas').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Status pengerjaan'));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dikerjakan').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Bagas · Dikerjakan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bagas · Dikerjakan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Penanggung jawab layanan'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Simpan order'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.text('Simpan order'));
+    await tester.tap(find.text('Simpan order'));
+    await tester.pumpAndSettle();
+    final savedItem = (repo.savedDraft!['items'] as List).single;
+    expect(savedItem['worker_id'], 'staff-b');
+    expect(savedItem['status'], 'Dikerjakan');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cart caps quantity at 999 and can remove a service', (
+    tester,
+  ) async {
+    final repo = SubmissionRepository();
+    final existing =
+        draft()
+          ..['items'] = [
+            {
+              ...(await repo.services()).first,
+              'id': 'item-a',
+              'service_id': 'service-a',
+              'quantity': 999,
+              'worker_id': repo.userId,
+              'status': 'Masuk',
+            },
+          ];
+    await openEditor(tester, repo, existing: existing);
+    await tester.scrollUntilVisible(
+      find.byTooltip('Tambah jumlah Deep Clean'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      tester
+          .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.add))
+          .onPressed,
+      isNull,
+    );
+    await addService(tester);
+    expect(find.text('Deep Clean'), findsOneWidget);
+    expect(find.text('999'), findsOneWidget);
+    expect(
+      find.text('Jumlah layanan maksimal 999 unit / pasang.'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.byTooltip('Hapus layanan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus layanan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deep Clean'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'backfill selects a manual date and time before saving an unpaid order',

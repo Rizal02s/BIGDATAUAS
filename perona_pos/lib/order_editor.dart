@@ -25,6 +25,7 @@ class _OrderEditorState extends State<OrderEditor> {
   late OrderSubmission submission;
   late DateTime orderAtWib;
   final photos = <PendingOrderPhoto>[];
+  final expandedItems = <String>{};
   String payment = 'Belum lunas';
   String? saveFailure;
   bool busy = false, finishing = false;
@@ -69,7 +70,19 @@ class _OrderEditorState extends State<OrderEditor> {
       builder:
           (_) => ServicePicker(services: widget.services, showWages: false),
     );
-    if (selected == null || !mounted) return;
+    if (selected == null || !mounted || !editable) return;
+    final existingItem =
+        items.where((item) => item['service_id'] == selected['id']).firstOrNull;
+    if (existingItem != null) {
+      if (money(existingItem['quantity']) >= 999) {
+        message(context, 'Jumlah layanan maksimal 999 unit / pasang.');
+        return;
+      }
+      setState(
+        () => existingItem['quantity'] = money(existingItem['quantity']) + 1,
+      );
+      return;
+    }
     final defaultWorker =
         widget.staff
             .where((person) => ['staff', 'technician'].contains(person['role']))
@@ -193,6 +206,15 @@ class _OrderEditorState extends State<OrderEditor> {
       if (!form.currentState!.validate()) return;
       if (items.isEmpty) {
         message(context, 'Tambahkan minimal satu layanan.');
+        return;
+      }
+      final unassigned =
+          items
+              .where((item) => (item['worker_id'] as String? ?? '').isEmpty)
+              .firstOrNull;
+      if (unassigned != null) {
+        setState(() => expandedItems.add(unassigned['id'] as String));
+        message(context, 'Pilih penanggung jawab untuk ${unassigned['name']}.');
         return;
       }
       try {
@@ -399,7 +421,7 @@ class _OrderEditorState extends State<OrderEditor> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            '2. Layanan & penanggung jawab',
+                            '2. Layanan',
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
@@ -677,6 +699,9 @@ class _OrderEditorState extends State<OrderEditor> {
   );
 
   Widget itemCard(Json item) {
+    final itemId = item['id'] as String;
+    final quantity = money(item['quantity']);
+    final expanded = expandedItems.contains(itemId);
     final workers =
         widget.staff
             .where(
@@ -685,6 +710,10 @@ class _OrderEditorState extends State<OrderEditor> {
                   person['id'] == item['worker_id'],
             )
             .toList();
+    final worker =
+        workers
+            .where((person) => person['id'] == item['worker_id'])
+            .firstOrNull;
     return Card(
       key: ValueKey(item['id']),
       child: Padding(
@@ -695,87 +724,185 @@ class _OrderEditorState extends State<OrderEditor> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    item['name'] as String,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['name'] as String,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${rp(item['price'])} / unit',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: PeronaColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        rp(money(item['price']) * quantity),
+                        style: const TextStyle(
+                          color: PeronaColors.forest,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: PeronaColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        key: ValueKey('decrease-$itemId'),
+                        onPressed:
+                            editable && quantity > 1
+                                ? () => setState(
+                                  () => item['quantity'] = quantity - 1,
+                                )
+                                : null,
+                        icon: const Icon(Icons.remove, size: 18),
+                        tooltip: 'Kurangi jumlah ${item['name']}',
+                        constraints: const BoxConstraints.tightFor(
+                          width: 40,
+                          height: 44,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 32,
+                        child: Semantics(
+                          label: 'Jumlah ${item['name']}',
+                          value: '$quantity',
+                          child: Text(
+                            '$quantity',
+                            key: ValueKey('quantity-$itemId'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        key: ValueKey('increase-$itemId'),
+                        onPressed:
+                            editable && quantity < 999
+                                ? () => setState(
+                                  () => item['quantity'] = quantity + 1,
+                                )
+                                : null,
+                        icon: const Icon(Icons.add, size: 18),
+                        tooltip: 'Tambah jumlah ${item['name']}',
+                        constraints: const BoxConstraints.tightFor(
+                          width: 40,
+                          height: 44,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    key: ValueKey('details-$itemId'),
+                    onPressed:
+                        editable
+                            ? () => setState(() {
+                              if (expanded) {
+                                expandedItems.remove(itemId);
+                              } else {
+                                expandedItems.add(itemId);
+                              }
+                            })
+                            : null,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${worker?['name'] ?? 'Pilih penanggung jawab'} · ${item['status']}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        Icon(
+                          expanded ? Icons.expand_less : Icons.expand_more,
+                          size: 18,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 IconButton(
                   onPressed:
                       editable
-                          ? () => setState(() => items.remove(item))
+                          ? () => setState(() {
+                            items.remove(item);
+                            expandedItems.remove(itemId);
+                          })
                           : null,
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.delete_outline, size: 20),
                   tooltip: 'Hapus layanan',
                 ),
               ],
             ),
-            Text(
-              '${rp(item['price'])} / unit',
-              style: const TextStyle(fontSize: 12, color: PeronaColors.muted),
-            ),
-            const SizedBox(height: 14),
-            TextFormField(
-              initialValue: '${item['quantity']}',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Jumlah unit / pasang',
-              ),
-              validator:
-                  (value) =>
-                      (int.tryParse(value ?? '') ?? 0) >= 1 &&
-                              (int.tryParse(value ?? '') ?? 0) <= 999
-                          ? null
-                          : 'Jumlah 1–999.',
-              onChanged:
-                  (value) => setState(
-                    () => item['quantity'] = int.tryParse(value) ?? 0,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: item['worker_id'] as String?,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Penanggung jawab layanan',
-              ),
-              items:
-                  workers
-                      .map(
-                        (person) => DropdownMenuItem(
-                          value: person['id'] as String,
-                          child: Text(
-                            '${person['name']}${person['role'] == 'disabled' ? ' (nonaktif)' : ''}',
-                            overflow: TextOverflow.ellipsis,
+            if (expanded) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: item['worker_id'] as String?,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Penanggung jawab layanan',
+                ),
+                items:
+                    workers
+                        .map(
+                          (person) => DropdownMenuItem(
+                            value: person['id'] as String,
+                            child: Text(
+                              '${person['name']}${person['role'] == 'disabled' ? ' (nonaktif)' : ''}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-              onChanged:
-                  editable
-                      ? (value) => setState(() => item['worker_id'] = value)
-                      : null,
-              validator: requiredText,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: item['status'] as String,
-              decoration: const InputDecoration(labelText: 'Status pengerjaan'),
-              items:
-                  ['Masuk', 'Dikerjakan', 'Selesai', 'Diambil']
-                      .map(
-                        (status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        ),
-                      )
-                      .toList(),
-              onChanged:
-                  editable
-                      ? (value) => setState(() => item['status'] = value)
-                      : null,
-            ),
+                        )
+                        .toList(),
+                onChanged:
+                    editable
+                        ? (value) => setState(() => item['worker_id'] = value)
+                        : null,
+                validator: requiredText,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: item['status'] as String,
+                decoration: const InputDecoration(
+                  labelText: 'Status pengerjaan',
+                ),
+                items:
+                    ['Masuk', 'Dikerjakan', 'Selesai', 'Diambil']
+                        .map(
+                          (status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(status),
+                          ),
+                        )
+                        .toList(),
+                onChanged:
+                    editable
+                        ? (value) => setState(() => item['status'] = value)
+                        : null,
+              ),
+            ],
           ],
         ),
       ),

@@ -191,6 +191,17 @@ class Repository {
     );
   }
 
+  Future<void> updateOrderStatuses(
+    String orderId,
+    int version,
+    List<Json> statuses,
+  ) async {
+    await db.rpc(
+      'update_order_statuses',
+      params: {'p_id': orderId, 'p_version': version, 'p_statuses': statuses},
+    );
+  }
+
   Future<void> _deleteOrder(Json order, String reason) async {
     await db.rpc(
       'delete_order',

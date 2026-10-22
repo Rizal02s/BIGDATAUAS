@@ -935,6 +935,25 @@ class _HomePageState extends State<HomePage> {
               order: order,
               workerId: personal ? userId : null,
               onTap: () => detail(order['id'] as String),
+              onWorkStatus: () async {
+                await _showOrderQuickAction(
+                  context,
+                  widget.repo,
+                  order['id'] as String,
+                  payment: false,
+                  workerId: personal ? userId : null,
+                );
+                if (mounted) await load();
+              },
+              onPayment: () async {
+                await _showOrderQuickAction(
+                  context,
+                  widget.repo,
+                  order['id'] as String,
+                  payment: true,
+                );
+                if (mounted) await load();
+              },
               onDelete:
                   owner && !preview ? () => deleteOrders(order: order) : null,
             ),
@@ -1542,9 +1561,12 @@ class _OrderCard extends StatelessWidget {
   final String? workerId;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback onWorkStatus, onPayment;
   const _OrderCard({
     required this.order,
     required this.onTap,
+    required this.onWorkStatus,
+    required this.onPayment,
     this.workerId,
     this.onDelete,
   });
@@ -1644,39 +1666,19 @@ class _OrderCard extends StatelessWidget {
                 spacing: 24,
                 runSpacing: 12,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Pengerjaan',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: PeronaColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      _Badge(
-                        label: workStatus,
-                        warning: !['Selesai', 'Diambil'].contains(workStatus),
-                      ),
-                    ],
+                  _OrderStatusAction(
+                    key: ValueKey('work-status-${order['id']}'),
+                    title: 'Pengerjaan',
+                    status: workStatus,
+                    warning: !['Selesai', 'Diambil'].contains(workStatus),
+                    onTap: onWorkStatus,
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Pembayaran',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: PeronaColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      _Badge(
-                        label: paymentStatus,
-                        warning: paymentStatus != 'Lunas',
-                      ),
-                    ],
+                  _OrderStatusAction(
+                    key: ValueKey('payment-status-${order['id']}'),
+                    title: 'Pembayaran',
+                    status: paymentStatus,
+                    warning: paymentStatus != 'Lunas',
+                    onTap: onPayment,
                   ),
                 ],
               ),
@@ -1686,4 +1688,53 @@ class _OrderCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _OrderStatusAction extends StatelessWidget {
+  final String title, status;
+  final bool warning;
+  final VoidCallback onTap;
+  const _OrderStatusAction({
+    super.key,
+    required this.title,
+    required this.status,
+    required this.warning,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '$title: $status. Ketuk untuk memperbarui',
+    excludeSemantics: true,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 11, color: PeronaColors.muted),
+            ),
+            const SizedBox(height: 5),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Badge(label: status, warning: warning),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.expand_more,
+                  size: 18,
+                  color: PeronaColors.muted,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

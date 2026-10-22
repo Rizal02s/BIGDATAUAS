@@ -1,5 +1,10 @@
 # Perona Kasir — Flutter + Supabase
 
+Kartu order kini mendukung perubahan pengerjaan dan pembayaran susulan langsung
+melalui label status. Terapkan migrasi `006_quick_order_status.sql` untuk
+mengaktifkan status cepat. Panduan dan rincian penyimpanan SQL ada di
+[status order](docs/STATUS_ORDER.md).
+
 MVP kasir jasa Perona Sepatu untuk Android. Dibuat dari nol berdasarkan dua gambar yang diberikan pada 2 Oktober 2026.
 
 **Versi terbaru:** `0.1.5+6` menyediakan nota pelanggan berupa gambar PNG,
