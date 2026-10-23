@@ -165,9 +165,21 @@ class PeronaPdf {
         margin: const pw.EdgeInsets.all(22),
         maxPages: 1000,
         header:
-            (_) => header(
-              'NOTA ORDER',
-              '#${receipt.number} | ${date(receipt.createdAt)} WIB',
+            (_) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                header('NOTA ORDER', '#${receipt.number}'),
+                pw.Text(
+                  'Tanggal masuk sepatu: ${DateFormat('dd/MM/yyyy HH:mm').format(jakarta(receipt.createdAt))} WIB',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+                pw.SizedBox(height: 5),
+                pw.Text(
+                  'Estimasi selesai: ${receipt.dueDate == null ? 'Belum ditentukan' : '${DateFormat('dd/MM/yyyy').format(receipt.dueDate!)} (WIB)'}',
+                  style: pw.TextStyle(font: bold, fontSize: 10, color: green),
+                ),
+                pw.SizedBox(height: 14),
+              ],
             ),
         footer: footer,
         build:

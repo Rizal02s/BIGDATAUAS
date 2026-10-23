@@ -1,0 +1,137 @@
+import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+
+export async function runAttendanceChecks({ db, owner, asUser, check, fails }) {
+  await db.exec('reset role');
+  const migration = await readFile(new URL('../supabase/014_daily_attendance.sql', import.meta.url), 'utf8');
+  await db.exec(migration); await db.exec(migration);
+  const tech = randomUUID(), admin = randomUUID(), other = randomUUID(), inactive = randomUUID();
+  for (const [id, role] of [[tech,'technician'],[admin,'admin'],[other,'staff'],[inactive,'pending']]) {
+    await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [id, JSON.stringify({ name: `Absensi ${role}` })]);
+    await db.query('update profiles set role=$2 where id=$1', [id, role]);
+  }
+  const today = (await db.query("select (clock_timestamp() at time zone 'Asia/Jakarta')::date::text d")).rows[0].d;
+  const punch = 'select record_attendance($1,$2,$3) r';
+  const correction = 'select correct_attendance($1,$2,$3,$4,$5,$6,$7,$8) r';
+  const report = 'select attendance_report($1,$2,$3,$4) r';
+  const row = async (sql, args=[]) => (await db.query(sql,args)).rows[0].r;
+  await asUser(tech);
+  let current = await row('select attendance_today() r');
+  check([current.date,current.today,current.open], [today,null,null], 'Tanggal absen dari server WIB; awal kosong');
+  await fails(punch,[randomUUID(),null,''],/tidak valid/,'Aksi null ditolak');
+  await fails(punch,[null,'in',''],/tidak valid/,'ID wajib untuk retry');
+  await fails(punch,[randomUUID(),'Izin','abc'],/minimal 5/,'Izin wajib keterangan');
+  await fails(punch,[randomUUID(),'out',''],/Tidak ada absen masuk/,'Tidak bisa pulang sebelum masuk');
+  const request = randomUUID();
+  const started = await row(punch,[request,'in','']);
+  check([started.employee_id,started.business_date,started.status,started.version],[tech,today,'Hadir',1],'Absen masuk untuk diri sendiri hari ini');
+  check(Math.abs(Date.now()-new Date(started.check_in).getTime())<30000,true,'Jam masuk diambil server');
+  check((await row(punch,[request,'in',''])).id,started.id,'Retry masuk tidak membuat row baru');
+  await fails(punch,[request,'Sakit','Demam tinggi'],/sudah digunakan/,'ID retry tidak boleh mengganti aksi');
+  await fails(punch,[randomUUID(),'in',''],/sebelumnya|sudah tercatat/,'Double tap dengan ID berbeda tidak menggandakan masuk');
+  await fails(punch,[randomUUID(),'Sakit','Demam tinggi'],/sebelumnya/,'Tidak boleh sakit selagi masih masuk');
+  await fails('update attendance set check_in=now() where id=$1',[started.id],/permission denied/,'Klien tidak bisa mengubah jam langsung');
+  await fails('insert into attendance_requests values($1,$2,$3,$4,$5)',[randomUUID(),tech,'out','',started.id],/permission denied/,'Klien tidak bisa memalsukan jurnal retry');
+  current = await row('select attendance_today() r');
+  check(current.open.id,started.id,'Absen berjalan tersedia untuk tombol pulang');
+  const outRequest = randomUUID();
+  const ended = await row(punch,[outRequest,'out','']);
+  check(ended.check_out!==null && new Date(ended.check_out)>=new Date(ended.check_in),true,'Pulang memakai jam server sesudah masuk');
+  check((await row(punch,[outRequest,'out',''])).check_out,ended.check_out,'Retry pulang mempertahankan jam');
+  check((await row(punch,[request,'in',''])).id,started.id,'Retry masuk setelah pulang tetap catatan lama');
+  await fails(punch,[randomUUID(),'in',''],/sudah tercatat/,'Satu kehadiran per tanggal, tidak masuk ulang setelah pulang');
+  check((await db.query('select count(*)::int n from attendance where employee_id=$1',[tech])).rows[0].n,1,'Hanya satu baris fisik');
+  await asUser(admin);
+  await fails(punch,[request,'in',''],/sudah digunakan/,'ID permintaan pegawai lain tidak bisa digunakan');
+  await fails(punch,[randomUUID(),'Izin','x'.repeat(501)],/tidak valid/,'Keterangan melebihi 500 ditolak server');
+  const permission = await row(punch,[randomUUID(),'Izin',' Mengurus keluarga ']);
+  check([permission.status,permission.notes,permission.check_in],['Izin','Mengurus keluarga',null],'Admin dapat mencatat izin sendiri');
+  await fails(punch,[randomUUID(),'in',''],/sudah tercatat/,'Pegawai tidak dapat mengganti izin menjadi masuk');
+  await fails(report,[today,today,tech,0],/sendiri/,'Admin tidak melihat absensi teknisi');
+  check((await row(report,[today,today,null,0])).rows.map(r=>r.employee_id),[admin],'Filter null admin tetap dirinya sendiri');
+  check((await db.query('select count(*)::int n from attendance')).rows[0].n,1,'RLS admin hanya membaca catatan sendiri');
+  await fails(correction,[tech,today,2,'Sakit',null,null,'Demam tinggi','Salah pencatatan'],/Hanya owner/,'Admin tidak dapat mengoreksi');
+  await fails('select attendance_history($1)',[started.id],/Hanya owner/,'Riwayat seluruh perubahan hanya owner');
+  await asUser(owner);
+  let summary = await row(report,[today,today,null,0]);
+  check(summary.rows.length>=2,true,'Owner melihat catatan lintas pegawai');
+  check(summary.rows.some(r=>r.employee_name==='Absensi technician'),true,'Rekap menyertakan nama pegawai');
+  await fails(correction,[tech,today,1,'Sakit',null,null,'Demam tinggi','Salah pencatatan'],/telah berubah/,'Koreksi versi usang ditolak');
+  await fails(correction,[tech,today,2,'Sakit',null,null,'Demam tinggi','abc'],/tidak valid/,'Alasan koreksi wajib minimal 5');
+  await fails(correction,[tech,today,2,'Sakit',started.check_in,null,'Demam tinggi','Salah pencatatan'],/tanpa jam/,'Sakit tidak boleh mempunyai jam');
+  await fails(correction,[tech,today,2,'Hadir',null,null,'','Lupa absen masuk'],/Jam masuk/,'Hadir wajib jam masuk');
+  await fails(correction,[tech,today,2,'Hadir','2021-01-01T01:00:00Z',null,'','Lupa absen masuk'],/Jam masuk/,'Tanggal masuk harus tanggal WIB yang dipilih');
+  const correctedArgs=[tech,today,2,'Sakit',null,null,'Demam tinggi','Ternyata salah absen'];
+  const corrected = await row(correction,correctedArgs);
+  check([corrected.status,corrected.version,corrected.correction_reason],['Sakit',3,'Ternyata salah absen'],'Owner mengoreksi dengan versi dan alasan');
+  check((await row(correction,correctedArgs)).version,3,'Retry koreksi idempoten tanpa menaikkan versi');
+  let history = await row('select attendance_history($1) r',[started.id]);
+  check(history.length,3,'Audit masuk, pulang, koreksi masing-masing sekali');
+  check([history[2].before.status,history[2].after.status],['Hadir','Sakit'],'Riwayat memuat sebelum/sesudah');
+  const fixed = [other,'2021-01-02',0,'Hadir','2021-01-01T18:00:00Z','2021-01-02T20:00:00Z','','Lupa absen pada saat itu'];
+  const old = await row(correction,fixed);
+  check((await row(correction,fixed)).id,old.id,'Retry pencatatan hilang juga idempoten');
+  check((await row(report,['2021-01-02','2021-01-02',other,0])).minutes,1560,'Durasi lintas tengah malam dihitung, dikelompokkan tanggal masuk WIB');
+  await fails(correction,[other,'2021-01-03',0,'Hadir','2021-01-03T01:00:00Z','2021-01-02T20:00:00Z','','Perbaikan absen'],/Jam masuk/,'Pulang sebelum masuk ditolak');
+  await fails(correction,[other,'2021-01-03',0,'Hadir','2021-01-03T01:00:00Z','2021-01-05T01:01:00Z','','Perbaikan absen'],/Jam masuk/,'Durasi lebih 48 jam ditolak');
+  const futureTime=(await db.query("select (clock_timestamp()+interval '1 minute')::text t")).rows[0].t;
+  await fails(correction,[tech,today,3,'Hadir',futureTime,null,'','Perbaikan absen'],/Jam masuk/,'Jam masa depan tidak bisa dipakai owner');
+  await fails(correction,[other,'2100-01-01',0,'Izin',null,null,'Pergi jauh','Perbaikan absen'],/tidak valid/,'Tanggal masa depan ditolak');
+  await fails(correction,[inactive,'2021-01-01',0,'Izin',null,null,'Pergi jauh','Perbaikan absen'],/aktif/,'Tidak membuat absen akun pending');
+  await fails(report,['2021-01-02','2021-01-01',null,0],/maksimal/,'Periode terbalik ditolak');
+  await fails(report,['2020-01-01','2021-01-01',null,0],/maksimal/,'Periode melebihi 366 hari ditolak');
+  await fails(report,[today,today,null,-1],/maksimal/,'Halaman negatif ditolak');
+  // Open shift from yesterday; checkout still attaches to yesterday, not today's blank row.
+  await db.exec('reset role');
+  const overnightId = randomUUID();
+  await db.query(`insert into attendance(id,employee_id,business_date,status,check_in,updated_by)
+    values($1,$2,(clock_timestamp() at time zone 'Asia/Jakarta')::date-1,'Hadir',
+      (((clock_timestamp() at time zone 'Asia/Jakarta')::date-1)::timestamp+interval '23 hours') at time zone 'Asia/Jakarta',$2)`,[overnightId,other]);
+  await asUser(owner);
+  await fails(correction,[other,'2021-01-04',0,'Hadir','2021-01-04T01:00:00Z',null,'','Lupa pencatatan'],/terbuka/,'Owner tidak membuat shift terbuka kedua');
+  await asUser(other);
+  current = await row('select attendance_today() r');
+  check([current.today,current.open.id],[null,overnightId],'Absen lama tetap terlihat walaupun berganti tanggal');
+  await fails(punch,[randomUUID(),'in',''],/sebelumnya/,'Tidak menumpuk shift terbuka hari berikutnya');
+  check((await row(punch,[randomUUID(),'out',''])).id,overnightId,'Pulang menyelesaikan tanggal masuk sebelumnya');
+  await row(punch,[randomUUID(),'in','']);
+  await db.exec('reset role');
+  await db.query(`update attendance set check_in=(((clock_timestamp() at time zone 'Asia/Jakarta')::date-3)::timestamp at time zone 'Asia/Jakarta'),business_date=(clock_timestamp() at time zone 'Asia/Jakarta')::date-3 where employee_id=$1 and check_out is null`,[other]);
+  await asUser(other);
+  await fails(punch,[randomUUID(),'out',''],/48 jam/,'Lupa pulang lebih 48 jam harus koreksi owner');
+  // Local fixture >1000 entries to ensure the server summary covers all pages.
+  await db.exec('reset role');
+  const generated = [];
+  for (let i=0;i<4;i++) {
+    const id=randomUUID(); generated.push(id);
+    await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',[id,JSON.stringify({name:`Rekap ${i}`})]);
+    await db.query("update profiles set role='technician' where id=$1",[id]);
+    await db.query(`insert into attendance(employee_id,business_date,status,notes,updated_by)
+      select $1,date '2022-01-01'+g,'Izin','Fixture izin',$1 from generate_series(0,299) g`,[id]);
+  }
+  await asUser(owner);
+  summary=await row(report,['2022-01-01','2022-12-31',null,0]);
+  check([summary.count,summary.permission,summary.rows.length,summary.has_more],[1200,1200,30,true],'Rekap semua 1200 baris, halaman 30');
+  const second=await row(report,['2022-01-01','2022-12-31',null,1]);
+  check(second.rows.some(r=>summary.rows.some(a=>a.id===r.id)),false,'Paginasi stabil tidak menggandakan catatan');
+  check((await row(report,['2022-01-01','2022-01-02',generated[0],0])).count,2,'Kedua batas tanggal inklusif');
+  check((await row(report,['2022-01-01','2022-12-31',null,39])).has_more,false,'Halaman akhir tidak menjanjikan data lagi');
+  await db.exec('reset role');
+  await db.query("update profiles set role='disabled',deleted_at=clock_timestamp() where id=$1",[generated[0]]);
+  await asUser(owner);
+  check((await row(report,['2022-01-01','2022-12-31',generated[0],0])).count,300,'Riwayat akun dihapus tetap ada');
+  const former = (await row(report,['2022-01-01','2022-01-01',generated[0],0])).rows[0];
+  const formerCorrection=await row(correction,[generated[0],'2022-01-01',former.version,'Sakit',null,null,'Sakit demam','Koreksi catatan lama']);
+  check(formerCorrection.status,'Sakit','Owner dapat mengoreksi riwayat akun dihapus');
+  await fails(correction,[generated[0],'2022-12-31',0,'Sakit',null,null,'Sakit demam','Koreksi catatan lama'],/aktif/,'Tidak membuat hari baru untuk akun dihapus');
+  await asUser(generated[0]);
+  await fails('select attendance_today()',[],/belum aktif/,'Akun dihapus tidak bisa membuka absensi');
+  check((await db.query('select count(*)::int n from attendance')).rows[0].n,0,'Token lama akun dihapus ditolak RLS');
+  await asUser(inactive);
+  await fails(punch,[randomUUID(),'in',''],/belum aktif/,'Pending tidak bisa absen');
+  await fails(report,[today,today,null,0],/belum aktif/,'Pending tidak bisa membaca rekap');
+  await db.exec('reset role; set role anon');
+  await fails('select attendance_today()',[],/permission denied/,'Anon tidak bisa absensi');
+  await fails(report,[today,today,null,0],/permission denied/,'Anon tidak bisa rekap');
+  await asUser(owner);
+}

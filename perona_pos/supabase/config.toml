@@ -1,0 +1,6 @@
+project_id = "perona_pos"
+
+[functions.delete-employee-account]
+# The handler validates the user with Auth and owner permission with SQL.
+# This also supports projects using newer JWT signing keys.
+verify_jwt = false

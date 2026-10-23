@@ -8,12 +8,20 @@ peran. Lihat [PDF.md](PDF.md) untuk cara unduh dan bagikan.
 | Kemampuan | Owner | Admin | Teknisi |
 |---|---|---|---|
 | Input/edit order, pembayaran, foto | Ya | Ya | Ya |
+| Mengisi estimasi selesai dan melihat prioritas pengerjaan (009) | Ya | Ya | Ya |
+| Memilih saran pelanggan lama saat tambah order (011) | Ya | Ya | Ya |
+| Tab Internal: mencatat, melihat, dan koreksi pengeluaran (010) | Ya | Tidak | Tidak |
 | Membaca detail pelanggan dan tagihan | Ya | Ya | Ya |
-| Rekap usaha | Ya | Tidak | Ya |
+| Laporan operasional pelanggan (012) | Ya | Ya | Tidak |
+| Rekap usaha dengan ongkos/kontribusi | Ya | Tidak | Ya |
+| Daftar layanan dan harga pelanggan | Ya | Ya | Ya |
 | Halaman Ongkos dan upah seluruh tim | Ya | Tidak | Ya |
 | Membaca tarif ongkos layanan | Ya | Tidak | Ya |
 | Mengubah tarif layanan | Ya | Tidak | Tidak |
 | Mengaktifkan akun/mengubah peran | Ya | Tidak | Tidak |
+| Hapus akun pegawai non-owner (013 + fungsi server) | Ya | Tidak | Tidak |
+| Mencatat dan membaca absensi sendiri (014) | Ya | Ya | Ya |
+| Rekap absensi tim, koreksi, dan riwayat perubahan (014) | Ya | Tidak | Tidak |
 | Menghapus order/koreksi pembayaran | Ya | Tidak | Tidak |
 | Membaca audit melalui database/API | Ya | Tidak | Tidak |
 | Kas harian dan tutup kas pertama (migrasi 007) | Ya | Ya | Tidak |
@@ -25,7 +33,10 @@ Ongkos pegawai ditampilkan di tab **Ongkos**, terpisah dari Ringkasan.
 Owner dan teknisi melihat ongkos tim dan rincian per pegawai. Teknisi juga
 melihat jumlah ongkos pribadinya. Ini hak upah yang tercatat pada tanggal order
 masuk. Pencatatan pembayaran ongkos tersedia melalui migrasi 008 dan menu
-Pembayaran ongkos; gaji pokok/bonus belum tersedia. Admin memiliki Beranda dan Order saja.
+Pembayaran ongkos; gaji pokok/bonus belum tersedia. Admin memiliki Beranda,
+Order, Layanan (baca harga pelanggan), dan Laporan operasional tanpa ongkos.
+Terapkan migrasi 012 setelah 011 untuk laporan baru. Panduan:
+[portal admin](PORTAL_ADMIN.md).
 Form, pemilih layanan, dan detail admin hanya menampilkan harga pelanggan.
 Penanggung jawab layanan dipilih dari teknisi atau owner; admin bukan penerima
 ongkos teknisi. Role `staff` lama tetap aktif dan ditampilkan sebagai Teknisi.
@@ -38,7 +49,7 @@ ongkos teknisi. Role `staff` lama tetap aktif dan ditampilkan sebagai Teknisi.
    ulang `001_schema.sql` atau menghapus database. Transaksi lama dipertahankan.
 3. Pasang APK terbaru `build/app/outputs/flutter-apk/app-release.apk` di atas
    aplikasi sebelumnya. Versinya `0.1.2+3`; gunakan kunci signing yang sama.
-4. Login owner, buka **Pegawai → menu Atur akses** pada akun yang dipilih,
+4. Login owner, buka **Internal → Kelola pegawai → Atur akses** pada akun yang dipilih,
    lalu pilih **Aktifkan sebagai admin** atau **Aktifkan sebagai teknisi**.
    Pengguna yang diubah perannya keluar lalu login kembali.
 
@@ -49,12 +60,29 @@ Untuk instalasi Supabase baru, jalankan `001`, `002`, kemudian `003`.
 
 ## Pembatasan di server
 
+Migrasi 014 memakai RLS dan RPC untuk absensi: pegawai/admin hanya mencatat dan
+membaca miliknya; owner membaca tim dan mengoreksi dengan alasan serta versi.
+Jam masuk/pulang pegawai berasal dari server. Pending/nonaktif/dihapus ditolak.
+Absensi tidak mengubah perhitungan ongkos. Panduan: [absensi](ABSENSI.md).
+
 RLS menolak admin membaca tabel `services` dan `orders` mentah karena memuat
 tarif/snapshot ongkos. Admin membaca RPC `service_catalog`, `order_list`, dan
 `order_detail` yang membuang `labor_fee` serta `labor_total`. RPC rekap upah
 menolak admin; audit yang menyimpan snapshot ongkos tetap hanya untuk owner.
 Jumlah order per tanggal tersedia lewat RPC tanpa angka ongkos. Pembatasan
 memakai role tersimpan di profiles, bukan metadata signup atau pilihan di HP.
+
+Migrasi 013 menambahkan penghapusan login melalui fungsi server dan profil
+historis yang tidak aktif. Direktori pegawai memakai `staff_directory` untuk
+menjaga alasan penghapusan tetap khusus owner; admin/teknisi tidak lagi membaca
+seluruh profil mentah. Akun yang ditandai dihapus langsung ditolak oleh otorisasi
+data, termasuk ketika masih menyelesaikan penghapusan Auth. Panduan deployment
+dan pemulihan proses terputus: [hapus akun pegawai](HAPUS_AKUN_PEGAWAI.md).
+
+RPC `operational_report` (012) khusus owner/admin hanya mengirim total nilai
+nota/pembayaran/piutang, status pengerjaan, dan rincian penerimaan pelanggan.
+Tidak ada kolom ongkos, kontribusi, biaya Internal, atau audit. Fungsi laporan
+ongkos dan pengeluaran Internal tetap menolak admin.
 
 Perhitungan ongkos, tarif historis, retry pembayaran, dan izin upload foto tetap
 berjalan di server. Upload admin memakai cek keberadaan order berupa boolean

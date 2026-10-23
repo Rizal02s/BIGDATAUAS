@@ -17,6 +17,7 @@ void main() {
       final pdf = await PeronaPdf.load();
       final period = Period.forDate(DateTime(2026, 10, 1), 'month');
       final orders = List.generate(45, (i) => sampleOrder(index: i + 1));
+      orders.first['due_date'] = '2026-10-05';
       final files = {
         'contoh-nota.pdf': await pdf.receipt(
           CustomerReceipt.fromOrder(orders.first),

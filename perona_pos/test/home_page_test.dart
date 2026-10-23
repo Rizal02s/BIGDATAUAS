@@ -9,6 +9,7 @@ import 'package:perona_pos/app_theme.dart';
 import 'package:perona_pos/domain.dart';
 import 'package:perona_pos/main.dart';
 import 'package:perona_pos/repository.dart';
+import 'package:perona_pos/operational_report.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _TestSupabaseClient extends Fake implements SupabaseClient {
@@ -26,6 +27,32 @@ class DemoRepository extends Repository {
 
   @override
   String get userId => 'staff-a';
+
+  @override
+  Future<List<Json>> customerSuggestions(String query) async => [];
+
+  @override
+  Future<OperationalReport> operationalReport(
+    Period period, {
+    int page = 0,
+  }) async => OperationalReport.fromJson({
+    'count': 3,
+    'gross': 185000,
+    'revenue': 180000,
+    'discount': 5000,
+    'pending': 2,
+    'ready': 1,
+    'overdue': 1,
+    'due_today': 1,
+    'received': 90000,
+    'cash': 30000,
+    'qris': 40000,
+    'transfer': 20000,
+    'outstanding_period': 90000,
+    'outstanding_all': 120000,
+    'receipt_count': 0,
+    'payments': [],
+  });
 
   @override
   Future<List<Json>> services() async => [
@@ -239,10 +266,14 @@ void main() {
     expect(find.text('Total order bulan ini'), findsOneWidget);
     expect(find.text('Bayar QRIS'), findsOneWidget);
     expect(find.text('Rp50.000'), findsWidgets);
-    expect(find.text('Pegawai'), findsOneWidget);
+    expect(find.text('Internal'), findsOneWidget);
     expect(repo.workerFilters.last, isNull);
     await capture(tester, 'owner-home');
-    await tester.tap(find.text('Pegawai'));
+    await tester.tap(find.text('Internal'));
+    await tester.pumpAndSettle();
+    expect(find.text('Internal perusahaan'), findsOneWidget);
+    await capture(tester, 'internal-menu');
+    await tester.tap(find.byKey(const ValueKey('open-internal-people')));
     await tester.pumpAndSettle();
     expect(find.text('Kelola pegawai'), findsOneWidget);
     expect(find.text('Menunggu aktivasi'), findsOneWidget);
@@ -258,7 +289,7 @@ void main() {
     expect(find.text('Portal Teknisi'), findsOneWidget);
     expect(find.text('Ongkos kerja saya'), findsNothing);
     expect(find.text('Customer belum lunas'), findsOneWidget);
-    expect(find.text('Pegawai'), findsNothing);
+    expect(find.text('Internal'), findsNothing);
     expect(repo.workerFilters.last, isNull);
     await capture(tester, 'staff-home');
     await tester.tap(find.text('Ongkos'));
@@ -314,7 +345,7 @@ void main() {
     expect(find.text('Daftar layanan'), findsOneWidget);
     expect(find.text('Tambah layanan'), findsNothing);
     expect(find.byTooltip('Edit layanan'), findsNothing);
-    expect(find.text('Pegawai'), findsNothing);
+    expect(find.text('Internal'), findsNothing);
   });
 
   testWidgets('small phone and enlarged text can scroll without overflow', (
@@ -374,7 +405,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Ongkos pegawai'), findsOneWidget);
       await capture(tester, 'owner-wages');
-      await tester.tap(find.text('Pegawai'));
+      await tester.tap(find.text('Internal'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('open-internal-people')));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Atur akses').first);
       await tester.pumpAndSettle();
@@ -390,8 +423,9 @@ void main() {
       await pumpHome(tester, repo, 'admin');
       expect(find.text('Portal Admin'), findsOneWidget);
       expect(find.text('Ongkos'), findsNothing);
-      expect(find.text('Pegawai'), findsNothing);
-      expect(find.text('Layanan'), findsNothing);
+      expect(find.text('Internal'), findsNothing);
+      expect(find.text('Layanan'), findsOneWidget);
+      expect(find.text('Laporan'), findsOneWidget);
       expect(find.text('Pembayaran masuk'), findsNothing);
       expect(repo.reportReads, 0);
       expect(repo.workerFilters.last, isNull);

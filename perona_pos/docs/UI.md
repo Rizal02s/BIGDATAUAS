@@ -26,6 +26,11 @@ Ada peran Owner, Admin, dan Teknisi; admin tidak mendapat menu/data ongkos.
 Hak akses dan langkah SQL untuk mengaktifkannya dijelaskan di
 [AKSES.md](AKSES.md). Bagian 3 Oktober di bawah adalah riwayat tampilan sebelumnya.
 
+**Pembaruan portal admin, 23 Oktober 2026:** admin memiliki Beranda, Order,
+Layanan (harga pelanggan saja), dan Laporan operasional. Ongkos dan Internal
+tetap tidak tersedia bagi admin. Rincian perhitungan tanggal, hak akses,
+dan migrasi 012 ada di [portal admin](PORTAL_ADMIN.md).
+
 Perubahan 3 Oktober 2026. Peran berasal dari `profiles.role` setelah login;
 pengguna tidak memilih peran sendiri pada halaman masuk.
 

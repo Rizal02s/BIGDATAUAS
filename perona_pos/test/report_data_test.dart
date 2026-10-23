@@ -63,6 +63,12 @@ void main() {
       expect(reportOrders([row], inputDay), isEmpty);
       final receipt = CustomerReceipt.fromOrder(row);
       expect(jakarta(receipt.createdAt), DateTime.utc(2026, 10, 3, 0, 5));
+      expect(receipt.dueDate, isNull);
+      final estimated = CustomerReceipt.fromOrder({
+        ...row,
+        'due_date': '2026-10-05',
+      });
+      expect(estimated.dueDate, DateTime(2026, 10, 5));
       final report = WorkerReport(reportOrders([row], selectedDay), 'staff-a');
       expect(report.total, 20000);
       expect(report.entries.length, 1);

@@ -56,6 +56,12 @@ per metode, jumlah pembayaran, uang dihitung, dan selisih.
 
 ## Perubahan setelah tutup kas
 
+Setelah migrasi 010, pengeluaran usaha yang ditandai **Diambil dari kas toko**
+juga menandai perubahan pencocokan kas. Jumlahnya dimasukkan sekali dalam
+total tunai keluar/disetor; tidak diisi otomatis. Pengeluaran dari luar kas
+toko, Transfer, dan QRIS tidak mengubah laci kas. Rincian biaya internal tetap
+khusus owner; admin hanya melihat penanda perubahan laporan kas.
+
 Setelah migrasi 008, pembayaran/koreksi ongkos pegawai dengan metode Tunai
 juga menandai kas untuk diperiksa ulang. Masukkan nominalnya dalam total tunai
 keluar; isian itu tetap manual agar tidak dihitung dua kali. Detail ongkos

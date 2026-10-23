@@ -24,6 +24,10 @@ class _OrderEditorState extends State<OrderEditor> {
   late List<Json> items;
   late OrderSubmission submission;
   late DateTime orderAtWib;
+  DateTime? dueDate;
+  String? customerSource;
+  String customerQuery = '';
+  bool customerChosen = false;
   final photos = <PendingOrderPhoto>[];
   final expandedItems = <String>{};
   String payment = 'Belum lunas';
@@ -35,6 +39,7 @@ class _OrderEditorState extends State<OrderEditor> {
   void initState() {
     super.initState();
     final order = widget.existing ?? {};
+    dueDate = orderDueDate(order);
     orderAtWib = jakarta(
       order['created_at'] == null
           ? DateTime.now()
@@ -106,6 +111,36 @@ class _OrderEditorState extends State<OrderEditor> {
     );
   }
 
+  void searchCustomer(String value, String source) {
+    if (widget.existing != null) return;
+    setState(() {
+      customerSource = source;
+      customerQuery = value;
+      customerChosen = false;
+    });
+  }
+
+  Widget customerSuggestions(String source) =>
+      widget.existing == null &&
+              editable &&
+              customerSource == source &&
+              customerQuery.trim().length >= 2
+          ? _CustomerSuggestions(
+            key: ValueKey('customer-suggestions-$source'),
+            repo: widget.repo,
+            query: customerQuery,
+            onSelected: (selected) {
+              setState(() {
+                customer.text = selected['customer_name'] as String;
+                phone.text = selected['phone'] as String? ?? '';
+                customerSource = null;
+                customerChosen = true;
+              });
+              FocusScope.of(context).unfocus();
+            },
+          )
+          : const SizedBox.shrink();
+
   Future<void> chooseOrderDate() async {
     FocusScope.of(context).unfocus();
     final picked = await showDatePicker(
@@ -158,6 +193,21 @@ class _OrderEditorState extends State<OrderEditor> {
     }
   }
 
+  Future<void> chooseDueDate() async {
+    FocusScope.of(context).unfocus();
+    final first = DateTime(orderAtWib.year, orderAtWib.month, orderAtWib.day);
+    final initial =
+        dueDate == null || dueDate!.isBefore(first) ? first : dueDate!;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Estimasi selesai (WIB)',
+    );
+    if (picked != null && mounted) setState(() => dueDate = picked);
+  }
+
   Future<void> pickPhoto(ImageSource source) async {
     setState(() => busy = true);
     try {
@@ -208,6 +258,13 @@ class _OrderEditorState extends State<OrderEditor> {
         message(context, 'Tambahkan minimal satu layanan.');
         return;
       }
+      if (dueDate != null &&
+          DateTime.utc(dueDate!.year, dueDate!.month, dueDate!.day).isBefore(
+            DateTime.utc(orderAtWib.year, orderAtWib.month, orderAtWib.day),
+          )) {
+        message(context, 'Estimasi selesai tidak boleh sebelum tanggal order.');
+        return;
+      }
       final unassigned =
           items
               .where((item) => (item['worker_id'] as String? ?? '').isEmpty)
@@ -239,6 +296,10 @@ class _OrderEditorState extends State<OrderEditor> {
           'version': widget.existing?['version'] ?? 0,
           'customer_name': customer.text.trim(),
           'created_at': jakartaToUtc(orderAtWib).toIso8601String(),
+          'due_date':
+              dueDate == null
+                  ? null
+                  : DateFormat('yyyy-MM-dd').format(dueDate!),
           'phone': phone.text.trim(),
           'notes': notes.text.trim(),
           'discount': int.parse(discount.text),
@@ -386,24 +447,83 @@ class _OrderEditorState extends State<OrderEditor> {
                             ),
                           ),
                           const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            key: const ValueKey('order-due-picker'),
+                            onPressed: editable ? chooseDueDate : null,
+                            icon: const Icon(Icons.event_available_outlined),
+                            label: Text(
+                              dueDate == null
+                                  ? 'Pilih estimasi selesai'
+                                  : 'Estimasi: ${DateFormat('dd/MM/yyyy').format(dueDate!)}',
+                            ),
+                          ),
+                          if (dueDate != null)
+                            TextButton(
+                              key: const ValueKey('clear-order-due'),
+                              onPressed:
+                                  editable
+                                      ? () => setState(() => dueDate = null)
+                                      : null,
+                              child: const Text('Hapus estimasi'),
+                            ),
+                          const Text(
+                            'Opsional, berlaku untuk seluruh nota. Batas selesai sampai akhir tanggal tersebut (WIB).',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: PeronaColors.muted,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           TextFormField(
+                            key: const ValueKey('order-customer-name'),
                             controller: customer,
+                            scrollPadding: EdgeInsets.fromLTRB(
+                              20,
+                              20,
+                              20,
+                              widget.existing == null ? 220 : 20,
+                            ),
                             maxLength: 150,
                             decoration: const InputDecoration(
                               labelText: 'Nama pelanggan',
                               prefixIcon: Icon(Icons.person_outline),
                             ),
                             validator: requiredText,
+                            onChanged: (value) => searchCustomer(value, 'name'),
                           ),
+                          customerSuggestions('name'),
                           const SizedBox(height: 12),
                           TextFormField(
+                            key: const ValueKey('order-customer-phone'),
                             controller: phone,
+                            scrollPadding: EdgeInsets.fromLTRB(
+                              20,
+                              20,
+                              20,
+                              widget.existing == null ? 220 : 20,
+                            ),
                             keyboardType: TextInputType.phone,
                             decoration: const InputDecoration(
                               labelText: 'Nomor WhatsApp',
                               prefixIcon: Icon(Icons.phone_outlined),
                             ),
+                            onChanged:
+                                (value) => searchCustomer(value, 'phone'),
                           ),
+                          customerSuggestions('phone'),
+                          if (customerChosen)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Pelanggan dipilih. Nama dan WhatsApp tetap bisa disesuaikan.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: PeronaColors.forest,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: notes,
@@ -870,7 +990,11 @@ class _OrderEditorState extends State<OrderEditor> {
                           (person) => DropdownMenuItem(
                             value: person['id'] as String,
                             child: Text(
-                              '${person['name']}${person['role'] == 'disabled' ? ' (nonaktif)' : ''}',
+                              '${person['name']}${person['deleted_at'] != null
+                                  ? ' (akun dihapus)'
+                                  : person['role'] == 'disabled'
+                                  ? ' (nonaktif)'
+                                  : ''}',
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

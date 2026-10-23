@@ -7,6 +7,16 @@ order. Nota menampilkan logo, nomor dan tanggal order dalam WIB, pelanggan,
 nomor WA, layanan, jumlah, harga, diskon, tagihan, pembayaran aktif, sisa dan
 status lunas. Ongkos, identitas teknisi, serta catatan internal tidak disertakan.
 
+Di bawah judul **NOTA ORDER**, nota menampilkan **Tanggal masuk sepatu**
+(tanggal dan jam order dalam WIB) serta **Estimasi selesai** (tanggal yang
+dipilih pada form order, dicetak tebal). Jika belum diisi, estimasi tertulis
+**Belum ditentukan**. Kedua keterangan muncul pada setiap bagian gambar dan
+header nota PDF. Tanggal masuk mengikuti tanggal order, termasuk order yang
+dicatat mundur, bukan waktu nota dibuat atau waktu input sebenarnya.
+Isi atau ubah estimasi melalui Edit order, simpan, lalu buka kembali nota
+untuk mengunduh atau membagikan gambar terbaru. Pembaruan tampilan nota ini
+tidak membutuhkan migrasi SQL tambahan di luar 009 untuk fitur estimasi.
+
 ## Unduh gambar
 
 Tekan **Unduh gambar**, pilih lokasi seperti Downloads, lalu simpan. Hasilnya

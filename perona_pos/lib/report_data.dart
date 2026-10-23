@@ -101,6 +101,7 @@ List<Json> reportOrders(List<Json> orders, Period period) =>
 class CustomerReceipt {
   final String customer, phone, number;
   final DateTime createdAt;
+  final DateTime? dueDate;
   final List<ReceiptLine> lines;
   final List<String> methods;
   final int discount, total, paid, remaining;
@@ -109,6 +110,8 @@ class CustomerReceipt {
       phone = order['phone'] as String? ?? '',
       number = '${order['number']}',
       createdAt = DateTime.parse(order['created_at'] as String),
+      // due_date is a WIB calendar date, not an instant to convert to UTC/WIB.
+      dueDate = DateTime.tryParse(order['due_date'] as String? ?? ''),
       lines =
           (order['items'] as List)
               .map(

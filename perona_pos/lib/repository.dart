@@ -5,6 +5,11 @@ import 'package:uuid/uuid.dart';
 import 'domain.dart';
 import 'cash_data.dart';
 import 'wage_payments.dart';
+import 'order_deadlines.dart';
+import 'expense_data.dart';
+import 'operational_report.dart';
+import 'employee_accounts.dart';
+import 'attendance_data.dart';
 
 class Repository {
   final SupabaseClient db;
@@ -15,6 +20,150 @@ class Repository {
   bool get canViewWages =>
       ['owner', 'staff', 'technician'].contains(accessRole);
   String get userId => db.auth.currentUser!.id;
+
+  Future<AttendanceToday> attendanceToday() async => AttendanceToday.fromJson(
+    Json.from(await db.rpc('attendance_today') as Map),
+  );
+
+  Future<AttendanceEntry> recordAttendance(
+    String requestId,
+    String action,
+    String notes,
+  ) async => AttendanceEntry(
+    Json.from(
+      await db.rpc(
+            'record_attendance',
+            params: {
+              'p_request_id': requestId,
+              'p_action': action,
+              'p_notes': notes.trim(),
+            },
+          )
+          as Map,
+    ),
+  );
+
+  Future<AttendanceReport> attendanceReport(
+    Period period, {
+    String? employee,
+    int page = 0,
+  }) async => AttendanceReport.fromJson(
+    Json.from(
+      await db.rpc(
+            'attendance_report',
+            params: {
+              'p_start': attendanceDate(jakarta(period.start)),
+              'p_end': attendanceDate(
+                jakarta(period.end.subtract(const Duration(microseconds: 1))),
+              ),
+              'p_employee': employee,
+              'p_page': page,
+            },
+          )
+          as Map,
+    ),
+  );
+
+  Future<void> correctAttendance(Json values) async {
+    if (accessRole != 'owner') {
+      throw StateError('Koreksi absensi hanya untuk owner.');
+    }
+    await db.rpc('correct_attendance', params: values);
+  }
+
+  Future<List<Json>> attendanceHistory(String id) async {
+    if (accessRole != 'owner') {
+      throw StateError('Riwayat perubahan hanya untuk owner.');
+    }
+    final rows = await db.rpc('attendance_history', params: {'p_id': id});
+    return (rows as List).map((r) => Json.from(r as Map)).toList();
+  }
+
+  Future<OperationalReport> operationalReport(
+    Period period, {
+    int page = 0,
+  }) async {
+    if (!['owner', 'admin'].contains(accessRole)) {
+      throw StateError('Laporan operasional hanya untuk owner dan admin.');
+    }
+    return OperationalReport.fromJson(
+      Json.from(
+        await db.rpc(
+              'operational_report',
+              params: {
+                'p_start': period.start.toIso8601String(),
+                'p_end': period.end.toIso8601String(),
+                'p_page': page,
+              },
+            )
+            as Map,
+      ),
+    );
+  }
+
+  Future<List<Json>> customerSuggestions(String query) async {
+    final term = query.trim();
+    if (term.length < 2) return [];
+    final result = await db.rpc(
+      'customer_suggestions',
+      params: {'p_query': term},
+    );
+    return (result as List)
+        .take(5)
+        .map((row) => Json.from(row as Map))
+        .toList();
+  }
+
+  void _requireExpenseOwner() {
+    if (accessRole != 'owner') {
+      throw StateError('Pengeluaran usaha hanya untuk owner.');
+    }
+  }
+
+  Future<ExpenseReport> expenses(Period period, int page) async {
+    _requireExpenseOwner();
+    return ExpenseReport.fromJson(
+      Json.from(
+        await db.rpc(
+              'expense_report',
+              params: {
+                'p_start': cashDate(jakarta(period.start)),
+                'p_end': cashDate(
+                  jakarta(period.end.subtract(const Duration(microseconds: 1))),
+                ),
+                'p_page': page,
+              },
+            )
+            as Map,
+      ),
+    );
+  }
+
+  Future<void> recordExpense(Json expense) async {
+    _requireExpenseOwner();
+    await db.rpc(
+      'record_expense',
+      params: {
+        'p_id': expense['id'],
+        'p_date': expense['spent_on'],
+        'p_title': expense['title'],
+        'p_category': expense['category'],
+        'p_amount': expense['amount'],
+        'p_method': expense['method'],
+        'p_from_drawer': expense['from_drawer'],
+        'p_notes': expense['notes'],
+      },
+    );
+  }
+
+  Future<void> voidExpense(String id, String reason) async {
+    _requireExpenseOwner();
+    await db.rpc(
+      'void_expense',
+      params: {'p_id': id, 'p_reason': reason.trim()},
+    );
+  }
+
   Future<Json> profile() async {
     final result = await db.from('profiles').select().eq('id', userId).single();
     accessRole = result['role'] as String;
@@ -155,7 +304,11 @@ class Repository {
               .map((row) => Json.from(row as Map))
               .toList()
           : await _all('services', 'name');
-  Future<List<Json>> staff() => _all('profiles', 'name');
+  Future<List<Json>> staff() async {
+    final result = await db.rpc('staff_directory');
+    return (result as List).map((row) => Json.from(row as Map)).toList();
+  }
+
   Future<List<Json>> orders(Period period, int page, {String? workerId}) async {
     if (isAdmin) {
       final rows = await db.rpc(
@@ -284,7 +437,9 @@ class Repository {
               .single();
   Future<void> saveOrder(Json order) async {
     await db.rpc(
-      'save_order_with_date',
+      order.containsKey('due_date')
+          ? 'save_order_with_estimate'
+          : 'save_order_with_date',
       params: {
         'p_id': order['id'],
         'p_version': order['version'] ?? 0,
@@ -294,8 +449,21 @@ class Repository {
         'p_discount': order['discount'],
         'p_items': order['items'],
         'p_order_at': order['created_at'],
+        if (order.containsKey('due_date')) 'p_due_date': order['due_date'],
       },
     );
+  }
+
+  Future<List<Json>> workQueue(
+    DeadlineFilter filter,
+    int page, {
+    String? workerId,
+  }) async {
+    final result = await db.rpc(
+      'work_queue',
+      params: {'p_filter': filter.name, 'p_page': page, 'p_worker': workerId},
+    );
+    return (result as List).map((row) => Json.from(row as Map)).toList();
   }
 
   Future<void> pay(
@@ -394,6 +562,52 @@ class Repository {
 
   Future<void> setRole(String id, String role) async {
     await db.rpc('set_staff_role', params: {'p_id': id, 'p_role': role});
+  }
+
+  Future<void> deleteEmployee(Json person, String reason) async {
+    if (accessRole != 'owner' ||
+        person['id'] == userId ||
+        person['role'] == 'owner') {
+      throw const EmployeeDeletionFailure(
+        'Hanya owner yang dapat menghapus akun pegawai lain. Akun owner dilindungi.',
+      );
+    }
+    final text = reason.trim();
+    if (text.length < 5 || text.length > 500) {
+      throw const EmployeeDeletionFailure(
+        'Isi alasan penghapusan 5 sampai 500 karakter.',
+      );
+    }
+    try {
+      final response = await db.functions.invoke(
+        'delete-employee-account',
+        body: {
+          'id': person['id'],
+          'expected_role': person['role'],
+          'reason': text,
+        },
+      );
+      if (response.data is! Map ||
+          response.data['deleted'] != true ||
+          response.data['id'] != person['id']) {
+        throw const EmployeeDeletionFailure(
+          'Penghapusan belum dapat dipastikan. Muat ulang daftar pegawai lalu coba pada akun yang sama.',
+        );
+      }
+    } on FunctionException catch (error) {
+      if (error.status == 404) {
+        throw const EmployeeDeletionFailure(
+          'Deploy fungsi delete-employee-account setelah menjalankan 013_delete_employee_account.sql terlebih dahulu.',
+        );
+      }
+      final detail = error.details;
+      throw EmployeeDeletionFailure(
+        detail is Map && detail['error'] is String
+            ? detail['error'] as String
+            : 'Penghapusan belum dapat dipastikan. Periksa daftar pegawai dan coba lagi pada akun yang sama.',
+        pending: detail is Map && detail['pending'] == true,
+      );
+    }
   }
 
   Future<void> uploadPhoto(

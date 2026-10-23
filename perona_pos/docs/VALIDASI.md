@@ -1,5 +1,103 @@
 # Hasil verifikasi
 
+**Absensi harian, 23 Oktober 2026:** masuk/pulang memakai jam server dan tanggal
+WIB, catatan izin/sakit, kalender inklusif, rekap tim/per pegawai, paginasi,
+koreksi owner dengan versi/alasan, dan riwayat sebelum/sesudah. Tidak menambah
+tab bawah atau mengubah perhitungan ongkos. Seluruh 249 tes Flutter lulus,
+termasuk 12 tes baru untuk absensi dan penyesuaian gulir menu Kelola pegawai.
+Total 507 pemeriksaan lokal SQL/RLS/RPC dan handler server lulus; absensi
+mencakup migrasi 014 berulang, peran/RLS, token akun dihapus, retry/klik ganda,
+batas waktu server, shift lintas hari, batas 48 jam, konflik versi, audit,
+riwayat akun nonaktif, serta rekap/paginasi 1.200 catatan. Preview
+[owner](ui/attendance-owner-small.png), [pegawai](ui/attendance-self.png), dan
+[koreksi](ui/attendance-correction.png) diperiksa pada 320 px dengan teks 150%.
+Pengujian memakai PostgreSQL PGlite dan Auth/jaringan/repository tiruan;
+migrasi online dan absensi dari dua HP nyata belum dijalankan oleh Codex.
+Aktivasi: jalankan 014 setelah 013, lalu hot restart aplikasi.
+Panduan: [absensi harian](ABSENSI.md).
+
+**Hapus akun pegawai, 23 Oktober 2026:** owner dapat menghapus akun non-owner
+dari Internal > Kelola pegawai, dengan alasan dan konfirmasi nama pegawai.
+Akses aplikasi dicabut saat permintaan disiapkan; fungsi server menghapus
+identitas login melalui Supabase Auth dan mempertahankan UUID serta riwayat
+nota, foto, pembayaran, dan ongkos. Penghapusan yang terputus dapat dilanjutkan.
+Seluruh 237 tes Flutter lulus; lima tes dialog terkait diulang setelah
+perapian tampilan dan tetap lulus. Analisis `lib test tool` tanpa temuan.
+Total 440 pemeriksaan lokal SQL/RLS/RPC dan handler server lulus, mencakup
+migrasi 013 berulang, proteksi owner/diri sendiri, pencabutan akses token lama,
+privasi direktori, konflik peran, retry/idempotensi, kegagalan Auth/finalisasi,
+dan pelestarian riwayat. Preview dialog dan status tertunda pada layar 320 px
+dengan teks 150% diperiksa. Auth dan jaringan memakai tiruan; runtime Deno,
+deploy Edge Function, migrasi online, serta penghapusan akun nyata belum diuji.
+Aktivasi membutuhkan migrasi 013 setelah 012 dan fungsi
+`delete-employee-account`. Panduan: [hapus akun pegawai](HAPUS_AKUN_PEGAWAI.md).
+
+**Portal admin operasional, 23 Oktober 2026:** navigasi admin diperluas menjadi
+Beranda, Order, Layanan, dan Laporan. Layanan admin hanya harga pelanggan;
+ongkos dan Internal tetap ditolak. Seluruh 229 tes Flutter lulus dan analisis
+`lib test tool` tanpa temuan. Total 379 pemeriksaan PostgreSQL lokal +
+RLS/RPC lulus, termasuk migrasi 012 berulang, pemisahan tanggal nota/pembayaran,
+batas WIB, piutang terbaru, status campuran, nota dihapus/pembayaran dikoreksi,
+paginasi dan lebih dari 1.000 transaksi, serta pembatasan perubahan tarif,
+penghapusan, koreksi pembayaran, payroll, dan biaya Internal.
+Tes Flutter mencakup empat tab, harga tanpa ongkos, perhitungan/model API,
+rincian pembayaran ke nota asal, periode harian/bulanan/tahunan, retry,
+paginasi, migrasi belum tersedia tanpa memblokir input, PDF rekap yang sudah
+ada, dan layar 320 px dengan teks 150%. Preview Beranda, Layanan, Laporan,
+dan penerimaan diperiksa. Pengujian memakai data tiruan/PostgreSQL lokal;
+migrasi 012 belum dijalankan pada database usaha online. Jalankan setelah 011.
+Panduan: [portal admin](PORTAL_ADMIN.md).
+
+**Saran pelanggan lama, 23 Oktober 2026:** fitur pencarian ditambahkan pada
+Nama pelanggan dan Nomor WhatsApp di Tambah order, maksimal lima pilihan.
+Seluruh 219 tes Flutter lulus; analisis `lib test tool` tanpa temuan.
+Pemeriksaan PostgreSQL lokal mencakup migrasi 011 berulang, pengelompokan
+nomor Indonesia, nama lama/terbaru, pelanggan tanpa nomor, nama sama dengan
+nomor berbeda, nota dihapus, prioritas hasil, privasi peran, dan lebih dari
+1.000 kunjungan. Total 344 pemeriksaan PostgreSQL + RLS/RPC lulus.
+Tes Flutter mencakup debounce/respons kedaluwarsa, pilihan nama/nomor,
+pengisian dua kolom, edit manual, kegagalan migrasi/retry, input manual tanpa
+menunggu saran, kunjungan hanya setelah simpan, peran aktif, dan layar kecil.
+Preview [saran pelanggan](ui/customer-suggestions.png) diperiksa. Seluruh tes
+memakai data tiruan dan PostgreSQL lokal; migrasi 011 belum diterapkan online.
+Jalankan setelah 010. Panduan: [pelanggan lama](PELANGGAN_LAMA.md).
+
+**Internal dan pengeluaran usaha, 23 Oktober 2026:** tab Pegawai menjadi
+Internal, dengan menu Pengeluaran usaha dan Kelola pegawai; jumlah tab dan
+akses owner tetap dipertahankan. Seluruh 207 tes Flutter lulus.
+Analisis `lib test tool` tanpa temuan.
+Total 317 pemeriksaan PostgreSQL lokal + RLS/RPC lulus, termasuk migrasi 010
+berulang, validasi nominal/tanggal/sumber kas, idempotensi, koreksi/audit,
+privasi admin/teknisi, fingerprint kas, dan lebih dari 1.000 pengeluaran.
+Tes Flutter mencakup navigasi internal, kalender inklusif, pencatatan biaya,
+metode/sumber tunai, respons terputus, klik ganda, koreksi, paginasi,
+kegagalan migrasi/retry, serta layar kecil dengan teks diperbesar.
+Preview menu, laporan, dan form biaya diperiksa. Pengujian memakai data
+tiruan dan PostgreSQL lokal, bukan migrasi/transaksi pada database usaha.
+Migrasi 010 belum dijalankan online; jalankan setelah 009.
+Panduan: [Internal dan pengeluaran](INTERNAL_DAN_PENGELUARAN.md).
+
+**Tanggal pada nota, 23 Oktober 2026:** 28 tes terkait model laporan, nota
+gambar/PDF, unduhan, berbagi, dan estimasi lulus. Tanggal masuk sepatu dan
+estimasi selesai ditambahkan di bawah NOTA ORDER, dengan keterangan eksplisit
+untuk estimasi kosong. PNG dengan/tanpa estimasi dan nota panjang diperiksa;
+PDF dirender dengan Poppler dan teksnya diperiksa untuk label, tanggal WIB,
+serta urutan sebelum nama pelanggan. Pengujian tidak mengubah database usaha.
+
+**Estimasi selesai, 23 Oktober 2026:** seluruh 193 tes Flutter lulus dan
+analisis `lib test tool` tanpa temuan. Total 263 pemeriksaan PostgreSQL lokal
++ RLS/RPC lulus, termasuk migrasi 009 yang dapat dijalankan ulang, estimasi
+opsional per nota, batas tanggal order dalam WIB, audit, konflik versi,
+kompatibilitas penyimpanan lama, redaksi ongkos admin, dan antrean pekerjaan
+lintas tanggal dengan paginasi. Tes widget mencakup kalender estimasi,
+penghapusan estimasi, validasi perubahan tanggal masuk, filter, cakupan
+teknisi/tim, kegagalan/retry, serta layar 320 px dengan teks 150%.
+Preview [prioritas pengerjaan](ui/work-queue.png) dan
+[form estimasi](ui/order-estimate.png) diperiksa. Pengujian memakai data tiruan
+dan PostgreSQL lokal; migrasi 009 belum diterapkan pada database usaha online.
+Jalankan setelah 008 sebelum menyimpan order dengan form terbaru.
+Panduan: [estimasi selesai](ESTIMASI_SELESAI.md).
+
 **Pembayaran ongkos, 23 Oktober 2026:** 54 tes Flutter terkait pembayaran
 ongkos, repository, rincian per nota/PDF, Ringkasan, kas harian, dan akses peran
 lulus. Analisis kode yang berubah tanpa temuan. Total 236 pemeriksaan

@@ -53,14 +53,20 @@ void main() {
   ) async {
     final repo = DetailRepository();
     await pumpHome(tester, repo, 'owner');
+    final customer = find.descendant(
+      of: find.byKey(const ValueKey('order-card-order-a')),
+      matching: find.text('Andi Pratama'),
+    );
     await tester.scrollUntilVisible(
-      find.text('Andi Pratama'),
+      customer,
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(tester.element(customer), alignment: 0.4);
+    await tester.pumpAndSettle();
     expect(find.text('1 foto'), findsNothing);
-    await tester.tap(find.text('Andi Pratama'));
+    await tester.tap(customer);
     await tester.pumpAndSettle();
     expect(find.text('Detail order'), findsOneWidget);
     expect(find.text('Lunas · QRIS'), findsOneWidget);

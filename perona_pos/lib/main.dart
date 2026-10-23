@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,11 @@ import 'order_submission.dart';
 import 'report_data.dart';
 import 'customer_insights.dart';
 import 'order_filters.dart';
+import 'order_deadlines.dart';
+import 'expense_data.dart';
+import 'operational_report.dart';
+import 'employee_accounts.dart';
+import 'attendance_data.dart';
 import 'cash_data.dart';
 import 'wage_payments.dart';
 import 'pdf_documents.dart';
@@ -28,6 +34,12 @@ part 'customer_pages.dart';
 part 'order_search.dart';
 part 'cash_page.dart';
 part 'wage_payment_page.dart';
+part 'work_queue_page.dart';
+part 'expenses_page.dart';
+part 'customer_picker.dart';
+part 'admin_report.dart';
+part 'employee_deletion.dart';
+part 'attendance_page.dart';
 
 final rupiah = NumberFormat.currency(
   locale: 'id_ID',
@@ -39,10 +51,40 @@ String stamp(dynamic value) => DateFormat(
   'dd/MM/yyyy HH:mm',
 ).format(jakarta(DateTime.parse(value as String)));
 String errorText(Object error) {
+  if (error is EmployeeDeletionFailure) return error.message;
   if (error is OrderTotalChanged) {
     return 'Tarif berubah. Tagihan tersimpan ${rp(error.total)}. Buka detail order untuk memeriksa dan mencatat pembayaran yang benar.';
   }
   if (error is PostgrestException) {
+    if ((error.code == 'PGRST202' || error.code == '42P01') &&
+        error.message.contains('attendance')) {
+      return 'Absensi belum aktif. Jalankan 014_daily_attendance.sql di Supabase.';
+    }
+    if (error.code == 'PGRST202' && error.message.contains('staff_directory')) {
+      return 'Direktori pegawai belum diperbarui. Jalankan 013_delete_employee_account.sql di Supabase.';
+    }
+    if (error.code == 'PGRST202' &&
+        error.message.contains('operational_report')) {
+      return 'Laporan operasional belum aktif. Jalankan pembaruan 012_admin_operational_report.sql di Supabase.';
+    }
+    if (error.code == 'PGRST202' &&
+        error.message.contains('customer_suggestions')) {
+      return 'Saran pelanggan belum aktif. Jalankan pembaruan 011_customer_suggestions.sql di Supabase.';
+    }
+    if ((error.code == 'PGRST202' || error.code == '42P01') &&
+        [
+          'expense_report',
+          'business_expenses',
+          'record_expense',
+          'void_expense',
+        ].any(error.message.contains)) {
+      return 'Pengeluaran usaha belum aktif di Supabase. Jalankan pembaruan 010_business_expenses.sql terlebih dahulu.';
+    }
+    if (error.code == 'PGRST202' &&
+        (error.message.contains('save_order_with_estimate') ||
+            error.message.contains('work_queue'))) {
+      return 'Estimasi selesai belum aktif di Supabase. Jalankan pembaruan 009_order_deadlines.sql terlebih dahulu.';
+    }
     if ((error.code == 'PGRST202' || error.code == '42P01') &&
         [
           'wage_overview',
@@ -307,6 +349,8 @@ class _AccountGateState extends State<AccountGate> {
               Text(
                 result.hasError
                     ? errorText(result.error!)
+                    : result.data?['deleted_at'] != null
+                    ? 'Akun telah dihapus. Hubungi owner jika memerlukan akun baru.'
                     : result.data?['role'] == 'disabled'
                     ? 'Akun dinonaktifkan. Hubungi owner.'
                     : 'Akun menunggu aktivasi owner. Untuk akun owner pertama, ikuti langkah bootstrap di README.',
@@ -543,6 +587,8 @@ class _OrderDetailState extends State<OrderDetail> {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text('${stamp(o['created_at'])} WIB\n${o['phone']}'),
+            const SizedBox(height: 8),
+            _OrderDeadlineLabel(order: o, showMissing: true),
             if ((o['notes'] as String).isNotEmpty)
               Text('Catatan: ${o['notes']}'),
             const SizedBox(height: 16),

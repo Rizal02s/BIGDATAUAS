@@ -18,6 +18,7 @@ class _HomePageState extends State<HomePage> {
   Map<int, int> dayCounts = {};
   DateTime date = jakarta(DateTime.now());
   String kind = 'day', catalogQuery = '';
+  bool internalPeople = false;
   final catalogSearch = TextEditingController();
   final orderSearch = TextEditingController();
   OrderFilter orderFilter = const OrderFilter();
@@ -130,6 +131,28 @@ class _HomePageState extends State<HomePage> {
     );
     if (mounted) await load();
   }
+
+  Future<void> workQueue() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => WorkQueuePage(
+              repo: widget.repo,
+              services: services,
+              staff: staff,
+              workerId: technician ? userId : null,
+            ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
+  Widget workQueueButton() => OutlinedButton.icon(
+    key: const ValueKey('open-work-queue'),
+    onPressed: workQueue,
+    icon: const Icon(Icons.event_note_outlined),
+    label: const Text('Prioritas pengerjaan'),
+  );
 
   Future<void> openDay(DateTime selected) async {
     await Navigator.of(context).push(
@@ -385,6 +408,19 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       actions: [
+        if (!owner)
+          IconButton(
+            key: const ValueKey('open-my-attendance'),
+            onPressed:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder:
+                        (_) => AttendancePage(repo: widget.repo, staff: staff),
+                  ),
+                ),
+            icon: const Icon(Icons.how_to_reg_outlined),
+            tooltip: 'Absensi saya',
+          ),
         IconButton(
           onPressed: busy ? null : load,
           icon: const Icon(Icons.refresh_rounded),
@@ -437,8 +473,8 @@ class _HomePageState extends State<HomePage> {
                         0 => admin ? adminHome() : ownerHome(),
                         1 => orderList(),
                         2 => catalog(),
-                        3 => wagesPage(),
-                        _ => owner ? people() : ownerHome(),
+                        3 => admin ? adminReports() : wagesPage(),
+                        _ => owner ? internalPage() : ownerHome(),
                       },
                     ),
               ),
@@ -461,23 +497,27 @@ class _HomePageState extends State<HomePage> {
             selectedIcon: Icon(Icons.receipt_long),
             label: 'Order',
           ),
-          if (!admin)
-            const NavigationDestination(
-              icon: Icon(Icons.sell_outlined),
-              selectedIcon: Icon(Icons.sell),
-              label: 'Layanan',
+          const NavigationDestination(
+            icon: Icon(Icons.sell_outlined),
+            selectedIcon: Icon(Icons.sell),
+            label: 'Layanan',
+          ),
+          NavigationDestination(
+            icon: Icon(
+              admin
+                  ? Icons.assessment_outlined
+                  : Icons.account_balance_wallet_outlined,
             ),
-          if (!admin)
-            const NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet),
-              label: 'Ongkos',
+            selectedIcon: Icon(
+              admin ? Icons.assessment : Icons.account_balance_wallet,
             ),
+            label: admin ? 'Laporan' : 'Ongkos',
+          ),
           if (owner)
             const NavigationDestination(
-              icon: Icon(Icons.people_outline),
-              selectedIcon: Icon(Icons.people),
-              label: 'Pegawai',
+              icon: Icon(Icons.business_outlined),
+              selectedIcon: Icon(Icons.business),
+              label: 'Internal',
             ),
         ],
       ),
@@ -605,13 +645,18 @@ class _HomePageState extends State<HomePage> {
         label: const Text('Kas harian'),
       ),
     ],
+    const SizedBox(height: 10),
+    workQueueButton(),
     if (owner && pendingCount > 0) ...[
       const SizedBox(height: 14),
       _Notice(
         icon: Icons.person_add_alt_1_outlined,
         text:
-            '$pendingCount akun menunggu aktivasi. Buka Pegawai untuk memberi akses.',
-        onTap: () => selectTab(4),
+            '$pendingCount akun menunggu aktivasi. Buka Internal untuk memberi akses.',
+        onTap: () {
+          setState(() => internalPeople = true);
+          selectTab(4);
+        },
       ),
     ],
     const SizedBox(height: 24),
@@ -651,6 +696,15 @@ class _HomePageState extends State<HomePage> {
   List<Widget> adminHome() => [
     greeting('Catat layanan dan pembayaran pelanggan.'),
     periodPicker(),
+    const SizedBox(height: 12),
+    _OperationalReportPanel(
+      key: const ValueKey('admin-overview'),
+      repo: widget.repo,
+      period: period,
+      revision: request,
+      compact: true,
+      onOrder: detail,
+    ),
     const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: () => editor(),
@@ -664,6 +718,8 @@ class _HomePageState extends State<HomePage> {
       icon: const Icon(Icons.point_of_sale_outlined),
       label: const Text('Kas harian'),
     ),
+    const SizedBox(height: 10),
+    workQueueButton(),
     const SizedBox(height: 20),
     _SectionTitle(
       title: 'Order terbaru',
@@ -675,6 +731,52 @@ class _HomePageState extends State<HomePage> {
     ),
     const SizedBox(height: 12),
     ...orderCards(preview: true),
+  ];
+
+  List<Widget> adminReports() => [
+    const _SectionTitle(
+      title: 'Laporan operasional',
+      subtitle: 'Nota masuk, penerimaan pelanggan, dan sisa tagihan dalam WIB.',
+    ),
+    const SizedBox(height: 16),
+    periodPicker(),
+    const SizedBox(height: 12),
+    Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          key: const ValueKey('report-daily-cash'),
+          onPressed: dailyCash,
+          icon: const Icon(Icons.point_of_sale_outlined),
+          label: const Text('Kas harian'),
+        ),
+        OutlinedButton.icon(
+          key: const ValueKey('report-order-pdf'),
+          onPressed: exportOrders,
+          icon: const Icon(Icons.download_outlined),
+          label: const Text('Unduh rekap PDF'),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
+    TextButton.icon(
+      onPressed: () {
+        orderSearch.clear();
+        orderFilter = const OrderFilter();
+        selectTab(1);
+      },
+      icon: const Icon(Icons.receipt_long_outlined),
+      label: const Text('Lihat nota masuk periode ini'),
+    ),
+    const SizedBox(height: 12),
+    _OperationalReportPanel(
+      key: const ValueKey('admin-operational-report'),
+      repo: widget.repo,
+      period: period,
+      revision: request,
+      onOrder: detail,
+    ),
   ];
 
   List<Widget> wagesPage() => [
@@ -1116,6 +1218,8 @@ class _HomePageState extends State<HomePage> {
         subtitle:
             owner
                 ? 'Atur harga dan ongkos untuk order baru.'
+                : admin
+                ? 'Daftar layanan aktif dan harga pelanggan per unit.'
                 : 'Harga pelanggan dan ongkos per unit layanan.',
       ),
       const SizedBox(height: 20),
@@ -1200,13 +1304,14 @@ class _HomePageState extends State<HomePage> {
                       label: 'Harga pelanggan',
                       value: rp(service['price']),
                     ),
-                    _PriceLabel(
-                      label: 'Ongkos / unit',
-                      value:
-                          service['labor_fee'] == null
-                              ? 'Belum ditetapkan'
-                              : rp(service['labor_fee']),
-                    ),
+                    if (widget.repo.canViewWages)
+                      _PriceLabel(
+                        label: 'Ongkos / unit',
+                        value:
+                            service['labor_fee'] == null
+                                ? 'Belum ditetapkan'
+                                : rp(service['labor_fee']),
+                      ),
                   ],
                 ),
               ],
@@ -1216,6 +1321,99 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
   }
+
+  List<Widget> internalPage() =>
+      internalPeople
+          ? [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => internalPeople = false),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Menu internal'),
+              ),
+            ),
+            ...people(),
+          ]
+          : [
+            const _SectionTitle(
+              title: 'Internal perusahaan',
+              subtitle:
+                  'Pengeluaran usaha, absensi, dan pengelolaan tim Perona Sepatu.',
+            ),
+            const SizedBox(height: 20),
+            Card(
+              child: ListTile(
+                key: const ValueKey('open-attendance'),
+                contentPadding: const EdgeInsets.all(18),
+                leading: const Icon(
+                  Icons.how_to_reg_outlined,
+                  color: PeronaColors.forest,
+                ),
+                title: const Text(
+                  'Absensi pegawai',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Masuk, pulang, izin/sakit, dan rekap kehadiran.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (_) =>
+                                AttendancePage(repo: widget.repo, staff: staff),
+                      ),
+                    ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                key: const ValueKey('open-business-expenses'),
+                contentPadding: const EdgeInsets.all(18),
+                leading: const Icon(
+                  Icons.payments_outlined,
+                  color: PeronaColors.forest,
+                ),
+                title: const Text(
+                  'Pengeluaran usaha',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Catat biaya, lihat total per periode, dan telusuri riwayat.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ExpensesPage(repo: widget.repo),
+                      ),
+                    ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                key: const ValueKey('open-internal-people'),
+                contentPadding: const EdgeInsets.all(18),
+                leading: const Icon(
+                  Icons.people_outline,
+                  color: PeronaColors.forest,
+                ),
+                title: const Text(
+                  'Kelola pegawai',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  'Atur akses owner, admin, dan teknisi. $pendingCount akun menunggu aktivasi.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => setState(() => internalPeople = true),
+              ),
+            ),
+          ];
 
   List<Widget> people() => [
     const _SectionTitle(
@@ -1246,7 +1444,11 @@ class _HomePageState extends State<HomePage> {
           'Pegawai mendaftar dengan email sendiri. Pilih menu akses pada akun untuk mengaktifkannya.',
     ),
     const SizedBox(height: 20),
-    ...([...staff]..sort(
+    ...([
+      ...staff.where(
+        (p) => p['deleted_at'] == null || p['auth_deleted_at'] == null,
+      ),
+    ]..sort(
       (a, b) => (a['role'] == 'pending' ? 0 : 1).compareTo(
         b['role'] == 'pending' ? 0 : 1,
       ),
@@ -1268,13 +1470,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 6),
                     _Badge(
-                      label: switch (person['role']) {
-                        'owner' => 'Owner',
-                        'staff' || 'technician' => 'Teknisi',
-                        'admin' => 'Admin',
-                        'pending' => 'Menunggu aktivasi',
-                        _ => 'Nonaktif',
-                      },
+                      label:
+                          person['deleted_at'] != null
+                              ? 'Penghapusan belum selesai'
+                              : switch (person['role']) {
+                                'owner' => 'Owner',
+                                'staff' || 'technician' => 'Teknisi',
+                                'admin' => 'Admin',
+                                'pending' => 'Menunggu aktivasi',
+                                _ => 'Nonaktif',
+                              },
                       warning: ['pending', 'disabled'].contains(person['role']),
                     ),
                   ],
@@ -1288,10 +1493,26 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(fontSize: 12, color: PeronaColors.muted),
                   ),
                 )
+              else if (person['deleted_at'] != null)
+                IconButton(
+                  key: ValueKey('retry-delete-employee-${person['id']}'),
+                  tooltip: 'Selesaikan penghapusan',
+                  onPressed: () async {
+                    await _showEmployeeDeletion(context, widget.repo, person);
+                    if (mounted) await load();
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                )
               else
                 PopupMenuButton<String>(
+                  key: ValueKey('employee-actions-${person['id']}'),
                   tooltip: 'Atur akses',
                   onSelected: (role) async {
+                    if (role == 'delete-account') {
+                      await _showEmployeeDeletion(context, widget.repo, person);
+                      if (mounted) await load();
+                      return;
+                    }
                     try {
                       await widget.repo.setRole(person['id'] as String, role);
                       await load();
@@ -1300,23 +1521,28 @@ class _HomePageState extends State<HomePage> {
                     }
                   },
                   itemBuilder:
-                      (_) => const [
-                        PopupMenuItem(
+                      (_) => [
+                        const PopupMenuItem(
                           value: 'technician',
                           child: Text('Aktifkan sebagai teknisi'),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'admin',
                           child: Text('Aktifkan sebagai admin'),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'owner',
                           child: Text('Jadikan owner'),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'disabled',
                           child: Text('Nonaktifkan'),
                         ),
+                        if (person['role'] != 'owner')
+                          const PopupMenuItem(
+                            value: 'delete-account',
+                            child: Text('Hapus akun pegawai'),
+                          ),
                       ],
                 ),
             ],
@@ -1791,6 +2017,7 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
+              _OrderDeadlineLabel(order: order, workerId: workerId),
               Wrap(
                 spacing: 24,
                 runSpacing: 12,

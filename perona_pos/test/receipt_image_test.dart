@@ -16,6 +16,7 @@ void main() {
     'receipt PNG is readable-sized and independent of internal data',
     () async {
       final order = sampleOrder(phone: '081234567890');
+      order['due_date'] = '2026-10-05';
       final images = await renderReceiptImages(
         CustomerReceipt.fromOrder(order),
       );
@@ -40,15 +41,23 @@ void main() {
         CustomerReceipt.fromOrder(privateChanges),
       );
       expect(privateImages.single, images.single);
+      final missingEstimate = await renderReceiptImages(
+        CustomerReceipt.fromOrder({...order, 'due_date': null}),
+      );
+      expect(missingEstimate.single, isNot(images.single));
       if (const bool.fromEnvironment('WRITE_RECEIPT_PREVIEW')) {
         Directory('output/receipts').createSync(recursive: true);
         File('output/receipts/contoh-nota.png').writeAsBytesSync(images.single);
+        File(
+          'output/receipts/nota-tanpa-estimasi.png',
+        ).writeAsBytesSync(missingEstimate.single);
       }
     },
   );
 
   test('100 services and long names continue across bounded PNGs', () async {
     final order = sampleOrder();
+    order['due_date'] = '2026-10-05';
     order['customer_name'] =
         'Pelanggan dengan nama panjang untuk pemeriksaan tampilan nota';
     order['items'] = List.generate(

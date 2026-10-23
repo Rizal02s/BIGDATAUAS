@@ -31,8 +31,10 @@ Future<void> openEditor(
   WidgetTester tester,
   SubmissionRepository repo, {
   Json? existing,
+  Size size = const Size(412, 892),
+  double textScale = 1,
 }) async {
-  tester.view.physicalSize = const Size(412, 892);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -43,6 +45,13 @@ Future<void> openEditor(
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: peronaTheme(),
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
         home: Builder(
           builder:
               (context) => Scaffold(
@@ -121,6 +130,7 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.ensureVisible(find.text('Simpan order'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Simpan order'));
       await tester.pumpAndSettle();
       final savedItems = repo.savedDraft!['items'] as List;
@@ -162,6 +172,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.text('Simpan order'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan order'));
     await tester.pumpAndSettle();
     final savedItem = (repo.savedDraft!['items'] as List).single;

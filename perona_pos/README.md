@@ -36,6 +36,49 @@ belum dilakukan.
 
 ## Fitur yang ada dalam kode
 
+**Absensi harian:** masuk/pulang memakai jam server WIB, catatan izin/sakit,
+rekap tanggal inklusif, serta koreksi owner dengan riwayat perubahan. Owner
+membuka Internal > Absensi pegawai; admin/teknisi memakai ikon Absensi saya
+di bagian atas halaman utama. Terapkan
+[`014_daily_attendance.sql`](supabase/014_daily_attendance.sql) setelah 013.
+Panduan: [absensi harian](docs/ABSENSI.md).
+
+**Hapus akun pegawai:** owner menghapus akun melalui Internal > Kelola pegawai
+dengan alasan dan konfirmasi. Akun owner dilindungi; riwayat order, foto,
+pembayaran, dan ongkos tetap tersimpan. Terapkan
+[`013_delete_employee_account.sql`](supabase/013_delete_employee_account.sql)
+setelah 012 **dan deploy fungsi server delete-employee-account** sebelum dipakai.
+Panduan: [hapus akun pegawai](docs/HAPUS_AKUN_PEGAWAI.md).
+
+**Portal admin operasional:** navigasi Beranda, Order, Layanan, dan Laporan.
+Admin melihat harga pelanggan, nota masuk, penerimaan per metode, piutang,
+status pengerjaan, dan kas harian; tanpa Ongkos/Internal. Perubahan tarif,
+penghapusan order, dan koreksi pembayaran tetap khusus owner. Terapkan
+[`012_admin_operational_report.sql`](supabase/012_admin_operational_report.sql)
+setelah 011. Panduan: [portal admin](docs/PORTAL_ADMIN.md).
+
+**Pelanggan lama pada form order:** ketik minimal dua karakter nama atau WA
+untuk menampilkan maksimal lima pelanggan dari seluruh riwayat nota aktif.
+Pilih untuk mengisi nama dan WA bersama; format nomor Indonesia dicocokkan
+sebagai identitas yang sama. Input pelanggan baru tetap tersedia. Terapkan
+[`011_customer_suggestions.sql`](supabase/011_customer_suggestions.sql)
+setelah 010. Panduan: [memilih pelanggan lama](docs/PELANGGAN_LAMA.md).
+
+**Internal perusahaan** menggantikan tab Pegawai tanpa menambah tab bawah.
+Owner membuka **Pengeluaran usaha** untuk mencatat biaya yang sudah dibayar,
+melihat total per periode/kategori, dan menelusuri koreksi. **Kelola pegawai**
+tetap tersedia di dalam Internal. Terapkan
+[`010_business_expenses.sql`](supabase/010_business_expenses.sql) setelah 009.
+Panduan: [Internal dan pengeluaran](docs/INTERNAL_DAN_PENGELUARAN.md).
+
+**Estimasi selesai dan prioritas pengerjaan:** pilih tanggal estimasi opsional
+per nota pada form order. Ringkasan/Beranda menyediakan daftar pekerjaan belum
+selesai dari semua tanggal, dengan filter terlambat, hari ini, mendatang, dan
+tanpa estimasi. Batas tanggal memakai WIB; pekerjaan Selesai/Diambil tidak
+ditandai terlambat. Terapkan [`009_order_deadlines.sql`](supabase/009_order_deadlines.sql)
+setelah 008 sebelum menyimpan order dengan form terbaru.
+Panduan: [estimasi selesai](docs/ESTIMASI_SELESAI.md).
+
 **Pembayaran ongkos pegawai** tersedia melalui Ongkos → Pembayaran ongkos.
 Owner mencatat pembayaran sebagian/lunas, metode, waktu bayar, serta koreksi
 dengan alasan. Teknisi dapat melihat riwayat. Alokasi per pegawai/nota mencegah
@@ -58,8 +101,8 @@ Tidak memerlukan migrasi Supabase baru.
 **Home sesuai peran:** owner mendapat ringkasan usaha dan pengelolaan tim;
 teknisi mendapat ringkasan usaha dan ongkos seluruh tim; admin hanya operasional
 order tanpa akses ongkos. Ongkos dipindahkan ke halaman sendiri.
-Navigasi owner: Ringkasan, Order, Layanan, Ongkos, Pegawai. Navigasi teknisi:
-Ringkasan, Order, Layanan, Ongkos. Admin: Beranda, Order.
+Navigasi owner: Ringkasan, Order, Layanan, Ongkos, Internal. Navigasi teknisi:
+Ringkasan, Order, Layanan, Ongkos. Admin: Beranda, Order, Layanan, Laporan.
 Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 
 | Halaman | Fungsi |
@@ -71,7 +114,7 @@ Panduan penerapan dan hak akses ada di [docs/AKSES.md](docs/AKSES.md).
 | Detail order | Ringkasan lunas/piutang, layanan/pegawai, edit, pembayaran, foto, serta nota gambar tanpa ongkos; unduh PNG atau bagikan ke WhatsApp |
 | PDF rekap | Seluruh order periode terpilih dan ringkasan tagihan/piutang; ongkos/gaji hanya untuk owner/teknisi |
 | Layanan | 32 tarif awal; owner dapat tambah, edit, nonaktifkan layanan tanpa dashboard backend |
-| Pegawai | Owner mengaktifkan sebagai admin/teknisi/owner atau menonaktifkan akun terdaftar |
+| Internal | Owner mencatat pengeluaran usaha dan mengelola akses pegawai |
 | Penghapusan | Owner dapat menghapus satu order atau semua order per tanggal melalui konfirmasi Ya/Tidak; mendukung semua status pembayaran dan menyimpan jejak audit |
 
 Ringkasan memakai seluruh nota yang masuk pada bulan berjalan dalam WIB.
@@ -214,7 +257,7 @@ where p.id = u.id
 
 Ganti placeholder dengan email akunmu, pastikan hanya akun yang benar terpilih. Tekan **Periksa status** di aplikasi atau masuk kembali.
 
-Pegawai berikutnya cukup mendaftar dari aplikasinya, kemudian owner memilih **Pegawai → Aktifkan sebagai pegawai**. Tidak perlu mengaktifkan pegawai lewat backend lagi.
+Pegawai berikutnya cukup mendaftar dari aplikasinya, kemudian owner memilih **Internal → Kelola pegawai → Atur akses**. Tidak perlu mengaktifkan pegawai lewat backend lagi.
 
 ## 4. Uji operasional sebelum menggunakan data sungguhan
 
@@ -274,6 +317,6 @@ Sumber utama: [Supabase pricing](https://supabase.com/pricing), [project pausing
 - Tidak ada refund sungguhan, pembayaran mundur tanggal, customer database tersendiri, export/nota PDF, printer Bluetooth, atau multi-outlet.
 - Foto yang sudah terhubung belum bisa diganti/hapus lewat UI. Cleanup objek gagal unggah yang belum terhubung hanya diizinkan untuk pemiliknya.
 - Audit disimpan dan hanya bisa dibaca owner melalui API/database; viewer audit di aplikasi belum dibuat.
-- Tarif dan perubahan peran diatur owner; teknisi melihat semua order, foto, ongkos, dan rekap. Admin hanya data operasional order, tanpa ongkos/rekap usaha.
+- Tarif dan perubahan peran diatur owner; teknisi melihat semua order, foto, ongkos, dan rekap. Admin melihat order, harga pelanggan, dan laporan operasional; tanpa ongkos, kontribusi, atau data Internal.
 - Paginasi order 30/halaman; agregasi rekap berada di server sehingga tidak dibatasi 1.000 baris API. Daftar layanan/pegawai juga dipaginasi.
 - Build debug/release dan pemeriksaan tampilan emulator sudah dilakukan. Release masih memakai signing debug; signing permanen dan pengujian pada HP nyata belum dilakukan. Mulai dari pilot internal, lalu perbaiki hasil uji sebelum operasional.

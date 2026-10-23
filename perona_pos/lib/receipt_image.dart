@@ -117,9 +117,21 @@ class _ReceiptPainter {
       size: 25,
       color: PeronaColors.forest,
     );
+    y += 8;
     paragraph(
-      '${DateFormat('dd/MM/yyyy HH:mm').format(jakarta(receipt.createdAt))} WIB'
-      '  •  Bagian ${pages.length + 1}',
+      'Tanggal masuk sepatu: ${DateFormat('dd/MM/yyyy HH:mm').format(jakarta(receipt.createdAt))} WIB',
+      size: 18,
+    );
+    y += 4;
+    paragraph(
+      'Estimasi selesai: ${receipt.dueDate == null ? 'Belum ditentukan' : '${DateFormat('dd/MM/yyyy').format(receipt.dueDate!)} (WIB)'}',
+      size: 18,
+      bold: true,
+      color: PeronaColors.forest,
+    );
+    y += 4;
+    paragraph(
+      'Bagian ${pages.length + 1}',
       size: 15,
       color: PeronaColors.muted,
     );
